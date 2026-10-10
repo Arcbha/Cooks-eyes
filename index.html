@@ -169,7 +169,7 @@ const CONFIG = {
   .voice:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
   /* Record page (site address + #record), for whoever manages the list */
-  body.record-mode main, body.record-mode .tabs-bar, body.record-mode footer { display: none; }
+  body.tool-mode main, body.tool-mode .tabs-bar, body.tool-mode footer { display: none; }
   .recorder[hidden] { display: none; }
   .recorder { padding: 18px 0 40px; }
   .recorder h2 { margin: 0 0 4px; font-size: 1.5rem; }
@@ -197,7 +197,39 @@ const CONFIG = {
   .rec-msg.error { background: #FDE4DC; }
   .rec-msg.ok { background: #DCF2E3; }
   .rec-msg[hidden] { display: none; }
+  /* Plan page */
+  .chips { display: flex; gap: 10px; margin: 0 0 12px; }
+  .chip {
+    flex: 1 1 0; min-height: 54px; border: 2px solid var(--ink); border-radius: 14px;
+    background: var(--card); color: var(--ink); font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .plan-day { margin: -6px 0 16px; font-size: 1.15rem; font-weight: 700; color: var(--accent); }
+  .plan-group { margin: 0 0 16px; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+  .plan-group legend { padding: 0 6px; font-size: 1.2rem; font-weight: 800; }
+  .check { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 4px; font-size: 1.15rem; border-bottom: 1px solid var(--line); }
+  .check input { width: 26px; height: 26px; accent-color: var(--accent); flex: none; }
+  .plan-group .other { display: block; margin-top: 10px; font-size: 0.95rem; color: var(--muted); }
+  .plan-group .other input {
+    display: block; width: 100%; margin-top: 4px; min-height: 48px; padding: 8px 12px;
+    border: 2px solid var(--line); border-radius: 12px; font: inherit; font-size: 1.05rem; color: var(--ink); background: var(--bg);
+  }
+  .field textarea {
+    display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
+    border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1.1rem; font-weight: 500; resize: vertical;
+  }
+
   .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 1rem; }
+
+  /* Today / Tomorrow menu */
+  .day-head { grid-column: 1 / -1; margin: 0 0 -8px; font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+  .plan-note {
+    grid-column: 1 / -1; padding: 14px 16px; border-radius: 16px;
+    background: #FFF3D6; border: 1px solid #F1D9A6; font-size: 1.2rem; white-space: pre-line;
+  }
+  .group-head { grid-column: 1 / -1; margin: 8px 0 -10px; font-size: 1.45rem; font-weight: 800; }
+  .tile.plain .name { padding-bottom: 16px; }
 
   .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
 
@@ -270,10 +302,34 @@ const CONFIG = {
     <a class="back" href="#">&larr; Back to recipes</a>
   </section>
 
+  <section class="recorder" id="planner" hidden>
+    <h2>Plan the menu</h2>
+    <p class="help">Choose the day and tick what to cook. The cook sees it under &ldquo;Today&rdquo; on that day.</p>
+    <div class="chips" id="planDays">
+      <button class="chip" type="button" data-offset="0">Today</button>
+      <button class="chip" type="button" data-offset="1">Tomorrow</button>
+    </div>
+    <label class="field">Or pick a date
+      <input id="planDate" type="date">
+    </label>
+    <p class="plan-day" id="planDayLabel"></p>
+    <div id="planDishes"></div>
+    <label class="field">Note for the cook (optional)
+      <textarea id="planNote" rows="3" placeholder="For example: guests coming, make it less spicy"></textarea>
+    </label>
+    <label class="field">Passcode
+      <input id="planPass" type="password" autocomplete="current-password">
+    </label>
+    <button class="big-btn primary" id="planSave" type="button">Save menu</button>
+    <p class="rec-msg" id="planMsg" hidden></p>
+    <a class="back" href="#">&larr; Back to recipes</a>
+  </section>
+
   <footer>
     <div id="status"></div>
     <button class="reload" id="reload" type="button">Reload list</button>
     <p class="edit-link" id="editWrap" hidden><a id="editLink" target="_blank" rel="noopener noreferrer">Edit dish list</a></p>
+    <p class="edit-link" id="planWrap" hidden><a href="#plan">Plan the menu</a></p>
     <p class="edit-link" id="recordWrap" hidden><a href="#record">Record voice notes</a></p>
   </footer>
 </div>
@@ -310,7 +366,14 @@ const CONFIG = {
     reload: document.getElementById("reload")
   };
 
-  var sections = [];      // [{ label, key, dishes: [...] }]
+  var sections = [];      // what the buttons show: Today / Tomorrow (if planned), then the sheet's sections
+  var dishSections = [];  // the sheet's sections: [{ label, key, dishes: [...] }]
+  var menuRows = [];      // the plan: [{ date: "2026-10-10", meal, dish, note }]
+  var renderedDay = null; // the date "Today" was worked out for
+  var lastLoad = 0;
+  var planDirty = false;  // the plan page has changes not yet saved
+  var tabTapped = false;  // the cook tapped a button today, so keep showing that one
+  var MENU_CACHE_KEY = "recipe-page-menu-v1";
   var currentKey = null;
 
   /* ---------- small helpers ---------- */
@@ -647,26 +710,49 @@ const CONFIG = {
       el.grid.appendChild(empty);
       return;
     }
-    section.dishes.forEach(function (dish) {
-      var li = document.createElement("li");
-      li.className = "card";
-      var tile = document.createElement(dish.link ? "a" : "div");
-      tile.className = "tile" + (dish.link ? "" : " no-link");
-      if (dish.link) {
-        tile.href = dish.link;
-        tile.target = "_blank";
-        tile.rel = "noopener noreferrer";
-        tile.addEventListener("click", stopVoice);
-      }
-      tile.appendChild(buildThumb(dish));
-      var name = document.createElement("div");
-      name.className = "name";
-      name.textContent = dish.name;
-      tile.appendChild(name);
-      li.appendChild(tile);
-      if (dish.voice) li.appendChild(buildVoiceButton(dish));
-      el.grid.appendChild(li);
+    if (section.plan) { renderPlan(section.plan); return; }
+    section.dishes.forEach(function (dish) { el.grid.appendChild(buildCard(dish)); });
+  }
+
+  function renderPlan(plan) {
+    var head = document.createElement("li");
+    head.className = "day-head";
+    head.textContent = longDate(plan.date);
+    el.grid.appendChild(head);
+    plan.notes.forEach(function (n) {
+      var note = document.createElement("li");
+      note.className = "plan-note";
+      note.textContent = n;
+      el.grid.appendChild(note);
     });
+    plan.groups.forEach(function (g) {
+      var gh = document.createElement("li");
+      gh.className = "group-head";
+      gh.textContent = g.meal;
+      el.grid.appendChild(gh);
+      g.dishes.forEach(function (dish) { el.grid.appendChild(buildCard(dish)); });
+    });
+  }
+
+  function buildCard(dish) {
+    var li = document.createElement("li");
+    li.className = "card";
+    var tile = document.createElement(dish.link ? "a" : "div");
+    tile.className = "tile" + (dish.link ? "" : dish.plain ? " plain" : " no-link");
+    if (dish.link) {
+      tile.href = dish.link;
+      tile.target = "_blank";
+      tile.rel = "noopener noreferrer";
+      tile.addEventListener("click", stopVoice);
+    }
+    tile.appendChild(buildThumb(dish));
+    var name = document.createElement("div");
+    name.className = "name";
+    name.textContent = dish.name;
+    tile.appendChild(name);
+    li.appendChild(tile);
+    if (dish.voice) li.appendChild(buildVoiceButton(dish));
+    return li;
   }
 
   function selectTab(key, scroll) {
@@ -680,8 +766,104 @@ const CONFIG = {
     if (scroll) window.scrollTo(0, 0);
   }
 
+  /* ---------- the day's menu ---------- */
+
+  function pad2(n) { return ("0" + n).slice(-2); }
+  function dayKey(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function addDays(key, n) {
+    var p = key.split("-");
+    return dayKey(new Date(+p[0], +p[1] - 1, +p[2] + n));
+  }
+  function longDate(key) {
+    var p = key.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2])
+      .toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  }
+
+  // Dates as the plan page writes them (2026-10-10), or typed by hand (10/10/2026, day first).
+  function parsePlanDate(raw) {
+    var s = String(raw || "").trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
+    m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    if (m) return m[3] + "-" + pad2(m[2]) + "-" + pad2(m[1]);
+    var t = Date.parse(s);
+    return isNaN(t) ? null : dayKey(new Date(t));
+  }
+
+  /* The "Menu" tab: Date, Meal, Dish name, Note. Anything without a Date column is ignored. */
+  function parseMenu(text) {
+    var t = String(text || "").trim();
+    if (!t || /^<(!doctype|html)/i.test(t)) return [];
+    var rows = parseCSV(t);
+    if (!rows.length) return [];
+    var cols = {};
+    rows[0].forEach(function (h, i) {
+      var k = String(h).toLowerCase(), type = null;
+      if (/date|day/.test(k)) type = "date";
+      else if (/note|comment/.test(k)) type = "note";
+      else if (/meal|section|time/.test(k)) type = "meal";
+      else if (/dish|name|item|recipe/.test(k)) type = "dish";
+      if (type && cols[type] === undefined) cols[type] = i;
+    });
+    if (cols.date === undefined || cols.dish === undefined) return [];
+    var out = [];
+    rows.slice(1).forEach(function (r) {
+      var date = parsePlanDate(r[cols.date]);
+      if (!date) return;
+      out.push({
+        date: date,
+        meal: cols.meal !== undefined ? String(r[cols.meal] || "").trim() : "",
+        dish: String(r[cols.dish] || "").trim(),
+        note: cols.note !== undefined ? String(r[cols.note] || "").trim() : ""
+      });
+    });
+    return out;
+  }
+
+  function dishLookup() {
+    var map = {};
+    dishSections.forEach(function (s) {
+      s.dishes.forEach(function (d) { var k = d.name.toLowerCase(); if (!map[k]) map[k] = d; });
+    });
+    return map;
+  }
+
+  function planSection(date, label, key) {
+    var rows = menuRows.filter(function (r) { return r.date === date; });
+    if (!rows.length) return null;
+    var lookup = dishLookup();
+    var order = dishSections.map(function (s) { return s.key; });
+    var groups = [], byMeal = {}, notes = [], dishes = [];
+    rows.forEach(function (r) {
+      if (r.note && notes.indexOf(r.note) < 0) notes.push(r.note);
+      if (!r.dish) return;
+      var meal = r.meal || "Menu";
+      var g = byMeal[meal.toLowerCase()];
+      if (!g) { g = byMeal[meal.toLowerCase()] = { meal: meal, dishes: [] }; groups.push(g); }
+      // A dish from the list keeps its photo, video and voice note; anything else shows by name.
+      var d = lookup[r.dish.toLowerCase()] ||
+        { name: r.dish, link: null, videoId: null, customImage: null, voice: null, plain: true };
+      g.dishes.push(d);
+      dishes.push(d);
+    });
+    groups.sort(function (a, b) {
+      var ia = order.indexOf(a.meal.toLowerCase()), ib = order.indexOf(b.meal.toLowerCase());
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    return { label: label, key: key, dishes: dishes, plan: { date: date, groups: groups, notes: notes } };
+  }
+
   function render(newSections) {
-    sections = newSections;
+    if (newSections) dishSections = newSections;
+    var today = dayKey(new Date());
+    if (renderedDay !== today) tabTapped = false;
+    renderedDay = today;
+    var planned = [
+      planSection(today, "Today", "__today"),
+      planSection(addDays(today, 1), "Tomorrow", "__tomorrow")
+    ].filter(Boolean);
+    sections = planned.concat(dishSections);
     el.tabs.textContent = "";
     sections.forEach(function (s) {
       var b = document.createElement("button");
@@ -690,15 +872,21 @@ const CONFIG = {
       b.setAttribute("role", "tab");
       b.dataset.key = s.key;
       b.textContent = s.label;
-      b.addEventListener("click", function () { selectTab(s.key, true); });
+      b.addEventListener("click", function () { tabTapped = true; selectTab(s.key, true); });
       el.tabs.appendChild(b);
     });
     el.tabsBar.hidden = sections.length < 2;
     fillDishPicker();
+    if (!planDirty) fillPlanner();
 
     var keys = sections.map(function (s) { return s.key; });
-    var wanted = currentKey || store(TAB_KEY);
-    selectTab(keys.indexOf(wanted) >= 0 ? wanted : keys[0], false);
+    // Opening the page shows today's menu first, when there is one.
+    // Tomorrow is only shown when tapped, so the cook never starts on the wrong day.
+    var remembered = currentKey || store(TAB_KEY);
+    if (remembered && remembered.indexOf("__") === 0) remembered = null;
+    var wanted = tabTapped ? currentKey : (keys[0] === "__today" ? "__today" : remembered);
+    var firstList = keys.filter(function (k) { return k.indexOf("__") !== 0; })[0] || keys[0];
+    selectTab(keys.indexOf(wanted) >= 0 ? wanted : firstList, false);
   }
 
   function setStatus(text) { el.status.textContent = text; }
@@ -741,8 +929,25 @@ const CONFIG = {
       });
   }
 
+  // The Menu tab of the same sheet; null when there is no edit link to find it by.
+  function menuUrl() {
+    var m = String(CONFIG.SHEET_EDIT_URL || "").match(/\/spreadsheets\/d\/(?!e\/)([\w-]+)/);
+    return m ? "https://docs.google.com/spreadsheets/d/" + m[1] +
+               "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(CONFIG.MENU_TAB || "Menu") : null;
+  }
+
+  // Resolves to the menu text, or null if it could not be read (the old plan is then kept).
+  function fetchMenu() {
+    var url = menuUrl();
+    if (!url) return Promise.resolve(null);
+    return fetch(url + "&t=" + Date.now(), { cache: "no-store", credentials: "omit" })
+      .then(function (res) { return res.ok ? res.text() : null; })
+      .catch(function () { return null; });
+  }
+
   function load() {
     var sources = sheetSources();
+    lastLoad = Date.now();
 
     if (!sources.length) {
       render(buildSections(SAMPLE_CSV));
@@ -755,13 +960,22 @@ const CONFIG = {
     var cached = store(CACHE_KEY);
     var hadCache = false;
     if (cached && !sections.length) {
+      menuRows = parseMenu(store(MENU_CACHE_KEY));
       try { render(buildSections(cached)); hadCache = true; } catch (e) { /* ignore a bad cache */ }
     } else if (sections.length) { hadCache = true; }
 
     setStatus("Loading...");
 
+    var menuRequest = fetchMenu();
     fetchList(sources)
       .then(function (got) {
+        return menuRequest.then(function (menuText) { got.menuText = menuText; return got; });
+      })
+      .then(function (got) {
+        if (got.menuText !== null) {
+          menuRows = parseMenu(got.menuText);
+          store(MENU_CACHE_KEY, got.menuText);
+        }
         render(got.sections);
         store(CACHE_KEY, got.text);
         showNotice("");
@@ -815,7 +1029,7 @@ const CONFIG = {
     var keep = rc.dish.value;
     rc.dish.textContent = "";
     var seen = {};
-    sections.forEach(function (s) {
+    dishSections.forEach(function (s) {
       var group = document.createElement("optgroup");
       group.label = s.label;
       s.dishes.forEach(function (d) {
@@ -924,6 +1138,7 @@ const CONFIG = {
         .then(function (out) {
           if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
           store(PASS_KEY, pass);
+          pl.pass.value = pass;
           resetRecorder();
           recMessage("Saved for " + dish + ". Open the recipe page (or tap Reload list) to see it.", "ok");
         })
@@ -952,19 +1167,194 @@ const CONFIG = {
     showRecorded(f);
   });
 
+  /* ---------- plan page: site address + #plan ---------- */
+
+  var pl = {
+    page: document.getElementById("planner"),
+    days: document.getElementById("planDays"),
+    date: document.getElementById("planDate"),
+    dayLabel: document.getElementById("planDayLabel"),
+    dishes: document.getElementById("planDishes"),
+    note: document.getElementById("planNote"),
+    pass: document.getElementById("planPass"),
+    save: document.getElementById("planSave"),
+    msg: document.getElementById("planMsg")
+  };
+
+  function planMessage(text, kind) {
+    pl.msg.textContent = text || "";
+    pl.msg.hidden = !text;
+    pl.msg.className = "rec-msg" + (kind ? " " + kind : "");
+  }
+
+  // In the evening, plan for tomorrow; earlier in the day, for today.
+  function defaultPlanDate() {
+    var now = new Date();
+    return now.getHours() >= 14 ? addDays(dayKey(now), 1) : dayKey(now);
+  }
+
+  function fillPlanner() {
+    if (!pl.date.value) pl.date.value = defaultPlanDate();
+    pl.dishes.textContent = "";
+    dishSections.forEach(function (s) {
+      var box = document.createElement("fieldset");
+      box.className = "plan-group";
+      box.dataset.meal = s.label;
+      var legend = document.createElement("legend");
+      legend.textContent = s.label;
+      box.appendChild(legend);
+      var seen = {};
+      s.dishes.forEach(function (d) {
+        var k = d.name.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        var row = document.createElement("label");
+        row.className = "check";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = d.name;
+        var name = document.createElement("span");
+        name.textContent = d.name;
+        row.appendChild(cb);
+        row.appendChild(name);
+        box.appendChild(row);
+      });
+      var other = document.createElement("label");
+      other.className = "other";
+      other.textContent = "Something else (separate with commas)";
+      var input = document.createElement("input");
+      input.type = "text";
+      input.className = "other-input";
+      other.appendChild(input);
+      box.appendChild(other);
+      pl.dishes.appendChild(box);
+    });
+    showPlanFor(pl.date.value);
+  }
+
+  // Ticks what is already planned for the chosen date, so it can be changed.
+  function showPlanFor(date) {
+    var today = dayKey(new Date());
+    Array.prototype.forEach.call(pl.days.children, function (b) {
+      b.setAttribute("aria-pressed", addDays(today, +b.dataset.offset) === date ? "true" : "false");
+    });
+    pl.dayLabel.textContent = date ? longDate(date) : "";
+    var rows = menuRows.filter(function (r) { return r.date === date && r.dish; });
+    var boxes = Array.prototype.slice.call(pl.dishes.querySelectorAll(".plan-group"));
+    var used = {};
+    boxes.forEach(function (box) {
+      var extra = [];
+      Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (cb) {
+        cb.checked = rows.some(function (r) {
+          var hit = r.dish.toLowerCase() === cb.value.toLowerCase() &&
+                    (!r.meal || r.meal.toLowerCase() === box.dataset.meal.toLowerCase());
+          if (hit) used[r.dish.toLowerCase() + "|" + r.meal.toLowerCase()] = true;
+          return hit;
+        });
+      });
+      rows.forEach(function (r) {
+        if (r.meal.toLowerCase() === box.dataset.meal.toLowerCase() &&
+            !used[r.dish.toLowerCase() + "|" + r.meal.toLowerCase()]) extra.push(r.dish);
+      });
+      box.querySelector(".other-input").value = extra.join(", ");
+    });
+    var note = menuRows.filter(function (r) { return r.date === date && r.note; })[0];
+    pl.note.value = note ? note.note : "";
+    planDirty = false;
+  }
+
+  function savePlan() {
+    var date = pl.date.value;
+    var pass = pl.pass.value.trim();
+    if (!date) { planMessage("Pick a date first.", "error"); return; }
+    if (!pass) { planMessage("Type the passcode first.", "error"); pl.pass.focus(); return; }
+
+    var items = [];
+    Array.prototype.forEach.call(pl.dishes.querySelectorAll(".plan-group"), function (box) {
+      var meal = box.dataset.meal;
+      Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (cb) {
+        if (cb.checked) items.push({ meal: meal, dish: cb.value });
+      });
+      box.querySelector(".other-input").value.split(",").forEach(function (x) {
+        x = x.trim();
+        if (x) items.push({ meal: meal, dish: x });
+      });
+    });
+    var note = pl.note.value.trim();
+
+    pl.save.disabled = true;
+    pl.save.textContent = "Saving...";
+    planMessage("");
+    fetch(CONFIG.VOICE_UPLOAD_URL, {
+      method: "POST",
+      body: JSON.stringify({ passcode: pass, action: "plan", date: date, items: items, note: note })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (out) {
+        if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
+        store(PASS_KEY, pass);
+        rc.pass.value = pass;
+        // Show the new plan straight away; the next load reads it back from the sheet.
+        menuRows = menuRows.filter(function (r) { return r.date !== date; });
+        items.forEach(function (it, i) {
+          menuRows.push({ date: date, meal: it.meal, dish: it.dish, note: i === 0 ? note : "" });
+        });
+        if (!items.length && note) menuRows.push({ date: date, meal: "", dish: "", note: note });
+        planDirty = false;
+        render();
+        var when = date === dayKey(new Date()) ? "now, under Today" : "under Today on " + longDate(date);
+        planMessage(items.length
+          ? "Saved " + items.length + (items.length === 1 ? " dish" : " dishes") + ". The cook sees it " + when + "."
+          : "Saved. Nothing is planned for " + longDate(date) + ".", "ok");
+      })
+      .catch(function (err) {
+        var m = err && err.message && !/fetch|network|json|token/i.test(err.message)
+          ? err.message : "Could not reach Google. Check the internet connection and try again.";
+        planMessage(m, "error");
+      })
+      .then(function () {
+        pl.save.disabled = false;
+        pl.save.textContent = "Save menu";
+      });
+  }
+
+  pl.days.addEventListener("click", function (e) {
+    var b = e.target.closest(".chip");
+    if (!b) return;
+    pl.date.value = addDays(dayKey(new Date()), +b.dataset.offset);
+    showPlanFor(pl.date.value);
+    planMessage("");
+  });
+  pl.date.addEventListener("change", function () { showPlanFor(pl.date.value); planMessage(""); });
+  pl.dishes.addEventListener("change", function () { planDirty = true; });
+  pl.dishes.addEventListener("input", function () { planDirty = true; });
+  pl.note.addEventListener("input", function () { planDirty = true; });
+  pl.save.addEventListener("click", savePlan);
+
   function showView() {
-    var wantRecord = location.hash === "#record" && !!safeUrl(CONFIG.VOICE_UPLOAD_URL);
-    if (!wantRecord && recording.media && recording.media.state === "recording") recording.media.stop();
-    if (wantRecord) stopVoice();
-    document.body.classList.toggle("record-mode", wantRecord);
-    rc.page.hidden = !wantRecord;
+    var tools = !!safeUrl(CONFIG.VOICE_UPLOAD_URL);
+    var view = tools && (location.hash === "#record" || location.hash === "#plan") ? location.hash.slice(1) : "";
+    if (view !== "record" && recording.media && recording.media.state === "recording") recording.media.stop();
+    if (view) stopVoice();
+    document.body.classList.toggle("tool-mode", !!view);
+    rc.page.hidden = view !== "record";
+    pl.page.hidden = view !== "plan";
+    if (view === "plan") { pl.date.value = defaultPlanDate(); fillPlanner(); planMessage(""); }
     window.scrollTo(0, 0);
   }
 
   if (safeUrl(CONFIG.VOICE_UPLOAD_URL)) {
     document.getElementById("recordWrap").hidden = false;
+    document.getElementById("planWrap").hidden = false;
     rc.pass.value = store(PASS_KEY) || "";
+    pl.pass.value = rc.pass.value;
   }
+
+  // A page left open overnight moves on to the new day's menu when it is looked at again.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState !== "visible" || location.hash === "#record" || location.hash === "#plan") return;
+    if (renderedDay !== dayKey(new Date()) || Date.now() - lastLoad > 10 * 60 * 1000) load();
+  });
   window.addEventListener("hashchange", showView);
   showView();
 

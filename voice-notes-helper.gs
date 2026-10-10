@@ -6,6 +6,8 @@
  *
  * 1. The record page (recipe site address + "#record") sends recordings here.
  *    For that, this script is deployed as a web app; see README.md.
+ *    The plan page (site address + "#plan") also saves the day's menu here,
+ *    into the "Menu" tab of the sheet.
  * 2. The "Recipe page > Link voice notes" menu in the sheet links sound files
  *    you upload to the folder yourself, matched by file name (e.g. "Poha.m4a").
  *
@@ -17,6 +19,9 @@
 var RECORDER_PASSCODE = "change-me";
 
 var VOICE_FOLDER_NAME = "Recipe voice notes";
+
+// The tab that holds the day-by-day menu plan. Created on first save.
+var MENU_SHEET_NAME = "Menu";
 
 // The recipe sheet (the long code in its address, between /d/ and /edit).
 var SHEET_ID = "1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ";
@@ -99,6 +104,11 @@ function doPost(e) {
     if (String(req.passcode || "") !== RECORDER_PASSCODE) {
       return reply({ ok: false, error: "Wrong passcode." });
     }
+    if (req.action === "plan") {
+      lock.waitLock(20000);
+      return savePlan(req);
+    }
+
     var dish = String(req.dish || "").trim();
     if (!dish || !req.data) return reply({ ok: false, error: "Nothing to save." });
 
@@ -136,6 +146,63 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (e2) { /* lock was never taken */ }
   }
+}
+
+/* ---------------- plan page ---------------- */
+
+// The plan page sends: { passcode, action: "plan", date: "2026-10-10",
+// items: [{ meal, dish }], note }. Replaces that date's plan in the Menu tab.
+function savePlan(req) {
+  var date = String(req.date || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return reply({ ok: false, error: "Pick a date first." });
+
+  var items = (req.items || []).filter(function (it) {
+    return it && String(it.dish || "").trim();
+  }).slice(0, 60);
+  var note = String(req.note || "").trim().slice(0, 1000);
+
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName(MENU_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(MENU_SHEET_NAME);
+    sheet.getRange(1, 1, 1, 4).setValues([["Date", "Meal", "Dish name", "Note"]]).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+
+  // Keep every other day's rows, then add this day's.
+  var last = sheet.getLastRow();
+  var kept = [];
+  if (last > 1) {
+    sheet.getRange(2, 1, last - 1, 4).getValues().forEach(function (row) {
+      var d = planDate(row[0]);
+      if (d && d !== date) kept.push([d, row[1], row[2], row[3]]);
+    });
+  }
+  var rows = items.map(function (it, i) {
+    return [date, String(it.meal || "").trim(), String(it.dish).trim(), i === 0 ? note : ""];
+  });
+  if (!rows.length && note) rows.push([date, "", "", note]);
+
+  var all = kept.concat(rows).sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
+  if (last > 1) sheet.getRange(2, 1, last - 1, 4).clearContent();
+  if (all.length) {
+    var range = sheet.getRange(2, 1, all.length, 4);
+    range.setNumberFormat("@");   // keep dates as typed text, e.g. 2026-10-10
+    range.setValues(all);
+  }
+  SpreadsheetApp.flush();
+  return reply({ ok: true, date: date, dishes: rows.length && rows[0][2] ? rows.length : 0 });
+}
+
+// A date cell as "yyyy-mm-dd", whether it holds text or a real date.
+function planDate(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  var s = String(v || "").trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
+  m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);   // day first, as written in India
+  if (m) return m[3] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[1]).slice(-2);
+  return s;
 }
 
 // The recipe page asks for a voice note with "?voice=<Drive file id>" and gets the
@@ -181,6 +248,7 @@ function voiceFolder() {
 function dishSheet() {
   var sheets = SpreadsheetApp.openById(SHEET_ID).getSheets();
   for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].getName() === MENU_SHEET_NAME) continue;
     var header = sheets[i].getRange(1, 1, 1, Math.max(1, sheets[i].getLastColumn())).getValues()[0];
     if (findColumns(header).name >= 0) return sheets[i];
   }

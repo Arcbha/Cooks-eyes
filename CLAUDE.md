@@ -18,4 +18,8 @@
   `CONFIG.VOICE_UPLOAD_URL`), it receives recordings from the record page
   (site address + `#record`) and saves them to Drive and the sheet. It also
   adds a sheet menu that links Drive files to dishes by file name.
+- The day's menu lives in the sheet's "Menu" tab (Date, Meal, Dish name, Note),
+  read live through the edit link. The plan page (site address + `#plan`) saves
+  it through the same helper script. The cook's page opens on "Today" when
+  that day is planned and never opens on "Tomorrow" by itself.
 - Explain what you changed in plain language, without code terms.

@@ -30,6 +30,33 @@ the sheet's sharing to stay at **Anyone with the link → Viewer**; if that is
 turned off, the page falls back to the published copy, which can lag by a few
 minutes and sometimes shows an older version.
 
+## Today's menu
+
+Plan what the cook should make, and the page shows it to the cook on that day.
+
+**Planning (you):** open **https://arcbha.github.io/Cooks-eyes/#plan** (or tap
+**Plan the menu** at the bottom of the recipe page). Choose **Today**,
+**Tomorrow** or any date, tick the dishes, add anything not on the list under
+"Something else", add a note for the cook if you like, and tap **Save menu**.
+In the evening the page picks tomorrow by itself, so planning on the 9th at
+night for the 10th is the default. Opening a date that is already planned shows
+its dishes ticked, so it can be changed; saving again replaces that day's plan.
+
+**What the cook sees:** on that day the page opens on a **Today** button with
+the date, your note, and the dishes grouped by meal, each with its photo,
+video and voice note. When tomorrow is planned too, a **Tomorrow** button
+appears (handy for soaking or defrosting), but the page never opens on it by
+itself. A page left open overnight moves to the new day's menu when the phone
+is picked up again.
+
+**Where it's kept:** a **Menu** tab in the sheet (Date, Meal, Dish name, Note),
+created on the first save. It can also be edited by hand there: write dates as
+`2026-10-10` (or `10/10/2026`, day first), and use the same dish names as the
+main tab so the photo, video and voice note show up. "Today" follows the date on
+the cook's phone.
+
+The plan page uses the same helper script and passcode as the record page.
+
 ## Voice instructions
 
 Any dish can have a voice note. The cook taps **Listen to instructions** under
