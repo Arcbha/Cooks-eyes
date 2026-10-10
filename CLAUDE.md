@@ -14,5 +14,8 @@
 - After any change, open the page at 390px width and confirm that both
   sections show, tiles open the right links, and nothing scrolls sideways.
 - `voice-notes-helper.gs` is an optional Google Apps Script the owner pastes
-  into the sheet; it links Drive voice notes to dishes by file name.
+  into the sheet. Deployed as a web app (its address goes in
+  `CONFIG.VOICE_UPLOAD_URL`), it receives recordings from the record page
+  (site address + `#record`) and saves them to Drive and the sheet. It also
+  adds a sheet menu that links Drive files to dishes by file name.
 - Explain what you changed in plain language, without code terms.

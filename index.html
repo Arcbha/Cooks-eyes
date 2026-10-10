@@ -28,6 +28,10 @@ const CONFIG = {
   PAGE_TITLE: "Mohna's Recipes",
   PAGE_SUBTITLE: "",
 
+  // Web app link of the voice notes helper (see README, "Record page").
+  // Turns on the record page at the site address + "#record". Leave as "" to turn it off.
+  VOICE_UPLOAD_URL: "",
+
   // Words on the button under dishes that have a voice note
   VOICE_BUTTON_TEXT: "Listen to instructions"
 };
@@ -164,6 +168,37 @@ const CONFIG = {
   }
   .voice:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
+  /* Record page (site address + #record), for whoever manages the list */
+  body.record-mode main, body.record-mode .tabs-bar, body.record-mode footer { display: none; }
+  .recorder[hidden] { display: none; }
+  .recorder { padding: 18px 0 40px; }
+  .recorder h2 { margin: 0 0 4px; font-size: 1.5rem; }
+  .recorder .help { margin: 0 0 18px; color: var(--muted); }
+  .field { display: block; margin: 0 0 16px; font-weight: 700; font-size: 1.05rem; }
+  .field select, .field input {
+    display: block; width: 100%; margin-top: 6px; min-height: 52px; padding: 10px 12px;
+    border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1.15rem; font-weight: 500;
+  }
+  .big-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; min-height: 64px; margin: 0 0 12px; padding: 10px 16px;
+    border: 2px solid var(--ink); border-radius: 16px; background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1.25rem; font-weight: 700; cursor: pointer;
+  }
+  .big-btn.primary { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+  .big-btn.rec { background: #B91C1C; border-color: #B91C1C; color: #FFFFFF; }
+  .big-btn[disabled] { opacity: 0.5; cursor: default; }
+  .big-btn[hidden], .recorder audio[hidden], .file-pick[hidden] { display: none; }
+  .recorder audio { width: 100%; margin: 0 0 12px; }
+  .file-pick { display: block; margin: 4px 0 16px; color: var(--muted); }
+  .file-pick input { display: block; margin-top: 6px; max-width: 100%; font: inherit; }
+  .rec-msg { margin: 6px 0 0; padding: 12px 14px; border-radius: 14px; background: #FFF3D6; }
+  .rec-msg.error { background: #FDE4DC; }
+  .rec-msg.ok { background: #DCF2E3; }
+  .rec-msg[hidden] { display: none; }
+  .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 1rem; }
+
   .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
 
   footer {
@@ -214,10 +249,32 @@ const CONFIG = {
 <div class="wrap">
   <p class="notice" id="notice" hidden></p>
   <main><ul class="grid" id="grid"></ul></main>
+
+  <section class="recorder" id="recorder" hidden>
+    <h2>Record a voice note</h2>
+    <p class="help">Pick the dish, record, listen back, then save. It shows on the recipe page within about 5 minutes.</p>
+    <label class="field">Dish
+      <select id="recDish"></select>
+    </label>
+    <label class="field">Passcode
+      <input id="recPass" type="password" autocomplete="current-password">
+    </label>
+    <button class="big-btn rec" id="recBtn" type="button">&#9679; Record</button>
+    <audio id="recPreview" controls hidden></audio>
+    <button class="big-btn primary" id="recSave" type="button" hidden>Save to recipe page</button>
+    <button class="big-btn" id="recAgain" type="button" hidden>Record again</button>
+    <label class="file-pick" id="recFileWrap">Or choose a recording already on this phone
+      <input id="recFile" type="file" accept="audio/*">
+    </label>
+    <p class="rec-msg" id="recMsg" hidden></p>
+    <a class="back" href="#">&larr; Back to recipes</a>
+  </section>
+
   <footer>
     <div id="status"></div>
     <button class="reload" id="reload" type="button">Reload list</button>
     <p class="edit-link" id="editWrap" hidden><a id="editLink" target="_blank" rel="noopener noreferrer">Edit dish list</a></p>
+    <p class="edit-link" id="recordWrap" hidden><a href="#record">Record voice notes</a></p>
   </footer>
 </div>
 
@@ -606,6 +663,7 @@ const CONFIG = {
       el.tabs.appendChild(b);
     });
     el.tabsBar.hidden = sections.length < 2;
+    fillDishPicker();
 
     var keys = sections.map(function (s) { return s.key; });
     var wanted = currentKey || store(TAB_KEY);
@@ -673,6 +731,186 @@ const CONFIG = {
         }
       });
   }
+
+  /* ---------- record page: site address + #record ---------- */
+
+  var PASS_KEY = "recipe-page-passcode-v1";
+  var rc = {
+    page: document.getElementById("recorder"),
+    dish: document.getElementById("recDish"),
+    pass: document.getElementById("recPass"),
+    btn: document.getElementById("recBtn"),
+    preview: document.getElementById("recPreview"),
+    save: document.getElementById("recSave"),
+    again: document.getElementById("recAgain"),
+    fileWrap: document.getElementById("recFileWrap"),
+    file: document.getElementById("recFile"),
+    msg: document.getElementById("recMsg")
+  };
+  var recording = { media: null, stream: null, chunks: [], blob: null, timer: null, started: 0 };
+
+  function recMessage(text, kind) {
+    rc.msg.textContent = text || "";
+    rc.msg.hidden = !text;
+    rc.msg.className = "rec-msg" + (kind ? " " + kind : "");
+  }
+
+  function fillDishPicker() {
+    var keep = rc.dish.value;
+    rc.dish.textContent = "";
+    var seen = {};
+    sections.forEach(function (s) {
+      var group = document.createElement("optgroup");
+      group.label = s.label;
+      s.dishes.forEach(function (d) {
+        var k = d.name.toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        var o = document.createElement("option");
+        o.value = d.name;
+        o.textContent = d.name + (d.voice ? "  (has a voice note)" : "");
+        group.appendChild(o);
+      });
+      if (group.children.length) rc.dish.appendChild(group);
+    });
+    if (keep && seen[keep.toLowerCase()]) rc.dish.value = keep;
+  }
+
+  function showRecorded(blob) {
+    recording.blob = blob;
+    if (rc.preview.src) URL.revokeObjectURL(rc.preview.src);
+    rc.preview.src = URL.createObjectURL(blob);
+    rc.preview.hidden = false;
+    rc.btn.hidden = true;
+    rc.fileWrap.hidden = true;
+    rc.save.hidden = false;
+    rc.save.disabled = false;
+    rc.again.hidden = false;
+  }
+
+  function resetRecorder() {
+    recording.blob = null;
+    rc.preview.pause();
+    rc.preview.hidden = true;
+    rc.save.hidden = true;
+    rc.again.hidden = true;
+    rc.btn.hidden = false;
+    rc.btn.className = "big-btn rec";
+    rc.btn.textContent = "\u25CF Record";
+    rc.fileWrap.hidden = false;
+    rc.file.value = "";
+  }
+
+  // Formats every phone can play back first; the rest as fallbacks.
+  function recordingType() {
+    var types = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+    for (var i = 0; i < types.length; i++) {
+      try { if (MediaRecorder.isTypeSupported(types[i])) return types[i]; } catch (e) { /* keep looking */ }
+    }
+    return "";
+  }
+
+  function startRecording() {
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      recMessage("This browser cannot record. Use \"Or choose a recording\" below instead.", "error");
+      return;
+    }
+    recMessage("");
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      var type = recordingType();
+      var media = type ? new MediaRecorder(stream, { mimeType: type }) : new MediaRecorder(stream);
+      recording.media = media;
+      recording.stream = stream;
+      recording.chunks = [];
+      media.ondataavailable = function (e) { if (e.data && e.data.size) recording.chunks.push(e.data); };
+      media.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        clearInterval(recording.timer);
+        var blob = new Blob(recording.chunks, { type: (media.mimeType || type || "audio/webm") });
+        if (!blob.size) { resetRecorder(); recMessage("Nothing was recorded. Try again.", "error"); return; }
+        showRecorded(blob);
+      };
+      media.start();
+      recording.started = Date.now();
+      rc.fileWrap.hidden = true;
+      rc.btn.className = "big-btn primary";
+      var tick = function () {
+        var sec = Math.floor((Date.now() - recording.started) / 1000);
+        rc.btn.textContent = "\u25A0 Stop   " + Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+      };
+      tick();
+      recording.timer = setInterval(tick, 500);
+    }).catch(function () {
+      recMessage("The microphone is blocked. Allow the microphone for this site in the browser settings, then try again.", "error");
+    });
+  }
+
+  function saveRecording() {
+    var dish = rc.dish.value;
+    var pass = rc.pass.value.trim();
+    if (!dish) { recMessage("Pick a dish first.", "error"); return; }
+    if (!pass) { recMessage("Type the passcode first.", "error"); rc.pass.focus(); return; }
+    if (!recording.blob) return;
+
+    rc.save.disabled = true;
+    rc.save.textContent = "Saving...";
+    recMessage("");
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data = String(reader.result).split(",")[1] || "";
+      // Sent as plain text so the browser can talk to Google directly.
+      fetch(CONFIG.VOICE_UPLOAD_URL, {
+        method: "POST",
+        body: JSON.stringify({ passcode: pass, dish: dish, mimeType: recording.blob.type, data: data })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (out) {
+          if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
+          store(PASS_KEY, pass);
+          resetRecorder();
+          recMessage("Saved for " + dish + ". It shows on the recipe page within about 5 minutes.", "ok");
+        })
+        .catch(function (err) {
+          var m = err && err.message && !/fetch|network|json|token/i.test(err.message)
+            ? err.message : "Could not reach Google. Check the internet connection and try again.";
+          recMessage(m, "error");
+          rc.save.disabled = false;
+        })
+        .then(function () { rc.save.textContent = "Save to recipe page"; });
+    };
+    reader.readAsDataURL(recording.blob);
+  }
+
+  rc.btn.addEventListener("click", function () {
+    if (recording.media && recording.media.state === "recording") recording.media.stop();
+    else startRecording();
+  });
+  rc.again.addEventListener("click", function () { resetRecorder(); recMessage(""); });
+  rc.save.addEventListener("click", saveRecording);
+  rc.file.addEventListener("change", function () {
+    var f = rc.file.files && rc.file.files[0];
+    if (!f) return;
+    if (f.size > 25 * 1024 * 1024) { recMessage("That file is too big. Keep voice notes under a few minutes.", "error"); return; }
+    recMessage("");
+    showRecorded(f);
+  });
+
+  function showView() {
+    var wantRecord = location.hash === "#record" && !!safeUrl(CONFIG.VOICE_UPLOAD_URL);
+    if (!wantRecord && recording.media && recording.media.state === "recording") recording.media.stop();
+    if (wantRecord) stopVoice();
+    document.body.classList.toggle("record-mode", wantRecord);
+    rc.page.hidden = !wantRecord;
+    window.scrollTo(0, 0);
+  }
+
+  if (safeUrl(CONFIG.VOICE_UPLOAD_URL)) {
+    document.getElementById("recordWrap").hidden = false;
+    rc.pass.value = store(PASS_KEY) || "";
+  }
+  window.addEventListener("hashchange", showView);
+  showView();
 
   el.title.textContent = CONFIG.PAGE_TITLE || "Recipes";
   document.title = CONFIG.PAGE_TITLE || "Recipes";
