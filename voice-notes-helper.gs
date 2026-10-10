@@ -18,6 +18,9 @@ var RECORDER_PASSCODE = "change-me";
 
 var VOICE_FOLDER_NAME = "Recipe voice notes";
 
+// The recipe sheet (the long code in its address, between /d/ and /edit).
+var SHEET_ID = "1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ";
+
 var SOUND_ENDINGS = {
   "audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a", "audio/x-m4a": ".m4a",
   "audio/aac": ".aac", "audio/mpeg": ".mp3", "audio/wav": ".wav", "audio/x-wav": ".wav"
@@ -153,7 +156,7 @@ function voiceFolder() {
 
 // The first tab whose row 1 has a dish name column.
 function dishSheet() {
-  var sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  var sheets = SpreadsheetApp.openById(SHEET_ID).getSheets();
   for (var i = 0; i < sheets.length; i++) {
     var header = sheets[i].getRange(1, 1, 1, Math.max(1, sheets[i].getLastColumn())).getValues()[0];
     if (findColumns(header).name >= 0) return sheets[i];
