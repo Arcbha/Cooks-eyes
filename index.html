@@ -51,6 +51,16 @@ const CONFIG = {
     --line: #E8DCC8;
     --accent: #C2410C;
     --radius: 20px;
+
+    /* One text-size scale for the whole page, largest to smallest:
+       page title > date > meal / list heading > dish name > body > small labels */
+    --fs-title: 2rem;
+    --fs-date: 1.75rem;
+    --fs-heading: 1.375rem;
+    --fs-dish: 1.3rem;
+    --fs-body: 1.125rem;
+    --fs-small: 0.9rem;
+    --fs-label: 0.8rem;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -65,10 +75,10 @@ const CONFIG = {
   }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
-  header { padding: 22px 0 6px; }
+  header { padding: 18px 0 4px; }
   .brand { display: flex; align-items: center; gap: 10px; }
   .cat { width: 46px; height: 50px; flex: none; }
-  h1 { margin: 0; font-size: 1.9rem; font-weight: 800; letter-spacing: -0.01em; }
+  h1 { margin: 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
   .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 1.05rem; }
 
   /* Section buttons: stay visible while scrolling */
@@ -78,19 +88,27 @@ const CONFIG = {
     padding: 12px 0;
     border-bottom: 1px solid var(--line);
   }
-  .tabs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tabs { display: flex; flex-direction: column; gap: 10px; }
+  .tab-row { display: flex; flex-wrap: wrap; gap: 10px; }
   .tab {
-    flex: 1 1 140px;
-    min-height: 58px;
-    padding: 10px 14px;
+    flex: 1 1 120px;
+    min-height: 50px;
+    padding: 8px 14px;
     border: 2px solid var(--ink);
-    border-radius: 16px;
+    border-radius: 14px;
     background: var(--card);
     color: var(--ink);
-    font: inherit; font-size: 1.2rem; font-weight: 700;
+    font: inherit; font-size: var(--fs-body); font-weight: 700;
     cursor: pointer;
   }
   .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  /* Top row: the day's menu, in the accent colour so it stands apart from the dish lists */
+  .plan-row .tab {
+    min-height: 58px; font-size: var(--fs-heading); border-color: var(--accent); color: var(--accent);
+  }
+  .plan-row .tab-today { flex: 2 1 0; }
+  .plan-row .tab-tomorrow { flex: 1 1 0; font-size: var(--fs-body); }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
   .tab:focus-visible, .tile:focus-visible, .reload:focus-visible {
     outline: 3px solid var(--accent); outline-offset: 3px;
   }
@@ -146,8 +164,8 @@ const CONFIG = {
     border-color: transparent transparent transparent var(--accent);
   }
   .name {
-    padding: 14px 16px 16px;
-    font-size: 1.5rem; font-weight: 700;
+    padding: 12px 16px 14px;
+    font-size: var(--fs-dish); font-weight: 700; line-height: 1.25;
     overflow-wrap: anywhere;
   }
   .tile.no-link { opacity: 0.6; }
@@ -162,7 +180,7 @@ const CONFIG = {
     width: 100%; min-height: 62px; padding: 10px 16px;
     border: 0; border-top: 1px solid var(--line);
     background: #FFF3D6; color: var(--ink);
-    font: inherit; font-size: 1.2rem; font-weight: 700;
+    font: inherit; font-size: var(--fs-body); font-weight: 700;
     text-decoration: none; cursor: pointer;
   }
   .voice .icon { font-size: 1.5rem; line-height: 1; }
@@ -177,9 +195,9 @@ const CONFIG = {
   body.tool-mode main, body.tool-mode .tabs-bar, body.tool-mode footer { display: none; }
   .recorder[hidden] { display: none; }
   .recorder { padding: 18px 0 40px; }
-  .recorder h2 { margin: 0 0 4px; font-size: 1.5rem; }
-  .recorder .help { margin: 0 0 18px; color: var(--muted); }
-  .field { display: block; margin: 0 0 16px; font-weight: 700; font-size: 1.05rem; }
+  .recorder h2 { margin: 0 0 4px; font-size: var(--fs-date); font-weight: 800; line-height: 1.15; }
+  .recorder .help { margin: 0 0 18px; color: var(--muted); font-size: var(--fs-body); }
+  .field { display: block; margin: 0 0 16px; font-weight: 700; font-size: var(--fs-body); }
   .field select, .field input {
     display: block; width: 100%; margin-top: 6px; min-height: 52px; padding: 10px 12px;
     border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
@@ -227,14 +245,58 @@ const CONFIG = {
 
   .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 1rem; }
 
-  /* Today / Tomorrow menu */
-  .day-head { grid-column: 1 / -1; margin: 0 0 -8px; font-size: 1.2rem; font-weight: 700; color: var(--accent); }
-  .plan-note {
-    grid-column: 1 / -1; padding: 14px 16px; border-radius: 16px;
-    background: #FFF3D6; border: 1px solid #F1D9A6; font-size: 1.2rem; white-space: pre-line;
+  /* Heading above a dish list (Breakfast, Lunch/Dinner) */
+  .list-head {
+    grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin: 0 0 -8px;
   }
-  .group-head { grid-column: 1 / -1; margin: 8px 0 -10px; font-size: 1.45rem; font-weight: 800; }
-  .tile.plain .name { padding-bottom: 16px; }
+  .list-head h2 { margin: 0; font-size: var(--fs-heading); font-weight: 800; }
+  .count {
+    flex: none; padding: 4px 10px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.75); border: 1px solid var(--line);
+    font-size: var(--fs-label); font-weight: 700; color: var(--muted);
+  }
+
+  /* Today / Tomorrow: date, note, then one coloured box per meal */
+  .day-head { grid-column: 1 / -1; margin: 0 0 -6px; }
+  .eyebrow {
+    display: block; font-size: var(--fs-label); font-weight: 800;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+  }
+  .day-date { margin: 2px 0 0; font-size: var(--fs-date); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+  .plan-note {
+    grid-column: 1 / -1; padding: 12px 16px 14px; border-radius: 16px;
+    background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--accent);
+  }
+  .plan-note .eyebrow { color: var(--muted); }
+  .plan-note p { margin: 4px 0 0; font-size: var(--fs-body); white-space: pre-line; }
+  .plan-empty {
+    grid-column: 1 / -1; padding: 28px 20px; text-align: center; border-radius: var(--radius);
+    background: var(--card); border: 2px dashed var(--line); color: var(--muted); font-size: var(--fs-body);
+  }
+  .plan-empty strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: var(--fs-heading); }
+
+  .meal {
+    --meal-bg: #F5EFE6; --meal-line: var(--line); --meal-chip: #EADFCB; --meal-ink: var(--ink);
+    grid-column: 1 / -1; padding: 12px 12px 14px; border-radius: 24px;
+    background: var(--meal-bg); border: 1px solid var(--meal-line);
+  }
+  .meal-breakfast { --meal-bg: #FFF5DC; --meal-line: #F2DDA4; --meal-chip: #FFE59A; --meal-ink: #7A4300; }
+  .meal-lunch     { --meal-bg: #EDF6EA; --meal-line: #CCE3C6; --meal-chip: #CFEAC6; --meal-ink: #2C6327; }
+  .meal-dinner    { --meal-bg: #EEEDF9; --meal-line: #D5D2EF; --meal-chip: #DAD6F6; --meal-ink: #3B3586; }
+  .meal-head { display: flex; align-items: center; gap: 12px; padding: 2px 4px 12px; }
+  .meal-icon {
+    flex: none; width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--meal-chip); font-size: 1.4rem; line-height: 1;
+  }
+  .meal-title { margin: 0; font-size: var(--fs-heading); font-weight: 800; color: var(--meal-ink); }
+  .meal-head .count { margin-left: auto; }
+  .meal-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px)  { .meal-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .meal-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .meal .card { box-shadow: 0 1px 4px rgba(42, 27, 16, 0.06); border-color: rgba(42, 27, 16, 0.08); }
+  .tile.plain .name { padding-bottom: 14px; }
 
   .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
 
@@ -708,6 +770,7 @@ const CONFIG = {
   function renderGrid() {
     el.grid.textContent = "";
     var section = sections.filter(function (s) { return s.key === currentKey; })[0];
+    if (section && section.plan) { renderPlan(section); return; }
     if (!section || !section.dishes.length) {
       var empty = document.createElement("li");
       empty.className = "empty";
@@ -715,27 +778,94 @@ const CONFIG = {
       el.grid.appendChild(empty);
       return;
     }
-    if (section.plan) { renderPlan(section.plan); return; }
+    var head = document.createElement("li");
+    head.className = "list-head";
+    var h = document.createElement("h2");
+    h.textContent = section.label;
+    head.appendChild(h);
+    head.appendChild(countBadge(section.dishes.length));
+    el.grid.appendChild(head);
     section.dishes.forEach(function (dish) { el.grid.appendChild(buildCard(dish)); });
   }
 
-  function renderPlan(plan) {
+  function countBadge(n) {
+    var c = document.createElement("span");
+    c.className = "count";
+    c.textContent = n + (n === 1 ? " dish" : " dishes");
+    return c;
+  }
+
+  // Pictures for meals, so they can be told apart without reading.
+  var MEAL_ICONS = { breakfast: "\u2600\uFE0F", lunch: "\uD83C\uDF5B", dinner: "\uD83C\uDF19" };
+
+  function mealClass(meal) {
+    var m = meal.toLowerCase();
+    if (m.indexOf("breakfast") >= 0) return "breakfast";
+    if (m.indexOf("lunch") >= 0) return "lunch";
+    if (m.indexOf("dinner") >= 0) return "dinner";
+    return "";
+  }
+
+  function renderPlan(section) {
+    var plan = section.plan;
     var head = document.createElement("li");
     head.className = "day-head";
-    head.textContent = longDate(plan.date);
+    var eyebrow = document.createElement("span");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = section.key === "__tomorrow" ? "Tomorrow's menu" : "Today's menu";
+    var date = document.createElement("h2");
+    date.className = "day-date";
+    date.textContent = longDate(plan.date);
+    head.appendChild(eyebrow);
+    head.appendChild(date);
     el.grid.appendChild(head);
+
     plan.notes.forEach(function (n) {
       var note = document.createElement("li");
       note.className = "plan-note";
-      note.textContent = n;
+      var label = document.createElement("span");
+      label.className = "eyebrow";
+      label.textContent = "Note";
+      var text = document.createElement("p");
+      text.textContent = n;
+      note.appendChild(label);
+      note.appendChild(text);
       el.grid.appendChild(note);
     });
+
+    if (!plan.groups.length) {
+      var empty = document.createElement("li");
+      empty.className = "plan-empty";
+      var strong = document.createElement("strong");
+      strong.textContent = "Nothing planned yet";
+      empty.appendChild(strong);
+      empty.appendChild(document.createTextNode("Tap Breakfast or Lunch/Dinner above to see all the dishes."));
+      el.grid.appendChild(empty);
+      return;
+    }
+
     plan.groups.forEach(function (g) {
-      var gh = document.createElement("li");
-      gh.className = "group-head";
-      gh.textContent = g.meal;
-      el.grid.appendChild(gh);
-      g.dishes.forEach(function (dish) { el.grid.appendChild(buildCard(dish)); });
+      var kind = mealClass(g.meal);
+      var box = document.createElement("li");
+      box.className = "meal" + (kind ? " meal-" + kind : "");
+      var mh = document.createElement("div");
+      mh.className = "meal-head";
+      var icon = document.createElement("span");
+      icon.className = "meal-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = MEAL_ICONS[kind] || "\uD83C\uDF7D\uFE0F";
+      var title = document.createElement("h3");
+      title.className = "meal-title";
+      title.textContent = g.meal;
+      mh.appendChild(icon);
+      mh.appendChild(title);
+      mh.appendChild(countBadge(g.dishes.length));
+      box.appendChild(mh);
+      var list = document.createElement("ul");
+      list.className = "meal-grid";
+      g.dishes.forEach(function (dish) { list.appendChild(buildCard(dish)); });
+      box.appendChild(list);
+      el.grid.appendChild(box);
     });
   }
 
@@ -764,7 +894,7 @@ const CONFIG = {
     stopVoice();
     currentKey = key;
     store(TAB_KEY, key);
-    Array.prototype.forEach.call(el.tabs.children, function (b) {
+    Array.prototype.forEach.call(el.tabs.querySelectorAll(".tab"), function (b) {
       b.setAttribute("aria-selected", b.dataset.key === key ? "true" : "false");
     });
     renderGrid();
@@ -865,22 +995,32 @@ const CONFIG = {
     var today = dayKey(new Date());
     if (renderedDay !== today) tabTapped = false;
     renderedDay = today;
-    var planned = [
-      planSection(today, "Today", "__today"),
-      planSection(addDays(today, 1), "Tomorrow", "__tomorrow")
-    ].filter(Boolean);
+    var todaySection = planSection(today, "Today's menu", "__today");
+    // Today's menu always has its button once the sheet has a menu, even before anything is planned.
+    if (!todaySection && menuUrl()) {
+      todaySection = { label: "Today's menu", key: "__today", dishes: [], plan: { date: today, groups: [], notes: [] } };
+    }
+    var planned = [todaySection, planSection(addDays(today, 1), "Tomorrow", "__tomorrow")].filter(Boolean);
     sections = planned.concat(dishSections);
+
+    // Two rows of buttons: the day's menu on top, the dish lists underneath.
     el.tabs.textContent = "";
+    var planRow = document.createElement("div");
+    planRow.className = "tab-row plan-row";
+    var listRow = document.createElement("div");
+    listRow.className = "tab-row list-row";
     sections.forEach(function (s) {
       var b = document.createElement("button");
       b.type = "button";
-      b.className = "tab";
+      b.className = "tab" + (s.key === "__today" ? " tab-today" : s.key === "__tomorrow" ? " tab-tomorrow" : "");
       b.setAttribute("role", "tab");
       b.dataset.key = s.key;
       b.textContent = s.label;
       b.addEventListener("click", function () { tabTapped = true; selectTab(s.key, true); });
-      el.tabs.appendChild(b);
+      (s.plan ? planRow : listRow).appendChild(b);
     });
+    if (planRow.children.length) el.tabs.appendChild(planRow);
+    el.tabs.appendChild(listRow);
     el.tabsBar.hidden = sections.length < 2;
     fillDishPicker();
     if (!planDirty) fillPlanner();
@@ -890,7 +1030,8 @@ const CONFIG = {
     // Tomorrow is only shown when tapped, so the cook never starts on the wrong day.
     var remembered = currentKey || store(TAB_KEY);
     if (remembered && remembered.indexOf("__") === 0) remembered = null;
-    var wanted = tabTapped ? currentKey : (keys[0] === "__today" ? "__today" : remembered);
+    var todayPlanned = !!(todaySection && (todaySection.plan.groups.length || todaySection.plan.notes.length));
+    var wanted = tabTapped ? currentKey : (todayPlanned ? "__today" : remembered);
     var firstList = keys.filter(function (k) { return k.indexOf("__") !== 0; })[0] || keys[0];
     selectTab(keys.indexOf(wanted) >= 0 ? wanted : firstList, false);
   }
