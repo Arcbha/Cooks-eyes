@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FBF5EA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Recipes">
+<title>Recipes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23C2410C'/%3E%3Ccircle cx='32' cy='32' r='17' fill='%23FBF5EA'/%3E%3Cpath d='M27 23v18l15-9z' fill='%23C2410C'/%3E%3C/svg%3E">
+
+<script>
+/* ============================================================
+   SETTINGS: this is the only part you need to edit.
+   ============================================================ */
+const CONFIG = {
+  // Paste the link from Google Sheets > File > Share > Publish to web > CSV
+  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaRZ5A2EKnAYddc4YnMJwi2gyr-cFIIbRKQjuaKb13MsQ1S7rd-x7Iuon-PEvmuDPhIyZVoHV7QcDR/pub?output=csv",
+
+  // Text shown at the top of the page
+  PAGE_TITLE: "Our Recipes",
+  PAGE_SUBTITLE: "Tap a photo to watch the video"
+};
+</script>
+
+<style>
+  :root {
+    --bg: #FBF5EA;
+    --card: #FFFFFF;
+    --ink: #2A1B10;
+    --muted: #7B6857;
+    --line: #E8DCC8;
+    --accent: #C2410C;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+                 "Noto Sans Devanagari", "Noto Sans Kannada", sans-serif;
+    line-height: 1.3;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  header { padding: 22px 0 6px; }
+  h1 { margin: 0; font-size: 1.9rem; font-weight: 800; letter-spacing: -0.01em; }
+  .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 1.05rem; }
+
+  /* Section buttons: stay visible while scrolling */
+  .tabs-bar {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tab {
+    flex: 1 1 140px;
+    min-height: 58px;
+    padding: 10px 14px;
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    background: var(--card);
+    color: var(--ink);
+    font: inherit; font-size: 1.2rem; font-weight: 700;
+    cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  .tab:focus-visible, .tile:focus-visible, .reload:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 3px;
+  }
+
+  .notice {
+    margin: 14px 0 0; padding: 12px 14px;
+    border-radius: 14px; border: 1px solid var(--line);
+    background: #FFF3D6; font-size: 1rem;
+  }
+  .notice.error { background: #FDE4DC; border-color: #F3B9A6; }
+  .notice[hidden] { display: none; }
+
+  /* Dish tiles */
+  .grid {
+    display: grid; grid-template-columns: 1fr; gap: 22px;
+    padding: 20px 0 8px; margin: 0; list-style: none;
+  }
+  @media (min-width: 640px)  { .grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+  .tile {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(42, 27, 16, 0.07);
+    transition: transform 0.08s ease;
+  }
+  .tile:active { transform: scale(0.985); }
+  .thumb {
+    position: relative; aspect-ratio: 16 / 9;
+    background: #EADFCB; overflow: hidden;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: #FFFFFF; font-size: 5.5rem; font-weight: 800;
+  }
+  .play {
+    position: absolute; right: 12px; bottom: 12px;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.94);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  .play::before {
+    content: ""; margin-left: 5px;
+    border-style: solid; border-width: 11px 0 11px 18px;
+    border-color: transparent transparent transparent var(--accent);
+  }
+  .name {
+    padding: 14px 16px 16px;
+    font-size: 1.5rem; font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .tile.no-link { opacity: 0.6; }
+  .tile.no-link .name::after {
+    content: "Video link missing"; display: block;
+    margin-top: 2px; font-size: 0.95rem; font-weight: 500; color: var(--muted);
+  }
+
+  .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
+
+  footer {
+    padding: 14px 0 40px; text-align: center;
+    color: var(--muted); font-size: 0.95rem;
+  }
+  .reload {
+    margin-top: 10px; min-height: 48px; padding: 8px 22px;
+    border: 1px solid var(--line); border-radius: 14px;
+    background: var(--card); color: var(--ink);
+    font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title">Recipes</h1>
+    <p class="subtitle" id="subtitle"></p>
+  </header>
+</div>
+
+<div class="tabs-bar" id="tabsBar" hidden>
+  <div class="wrap"><div class="tabs" id="tabs" role="tablist"></div></div>
+</div>
+
+<div class="wrap">
+  <p class="notice" id="notice" hidden></p>
+  <main><ul class="grid" id="grid"></ul></main>
+  <footer>
+    <div id="status"></div>
+    <button class="reload" id="reload" type="button">Reload list</button>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Shown only until a sheet link is pasted into CONFIG above. */
+  var SAMPLE_CSV = [
+    "Section,Dish name,YouTube link,Image link,Show",
+    "Breakfast,Poha,https://www.youtube.com/results?search_query=poha+recipe,,Y",
+    "Breakfast,Upma,https://www.youtube.com/results?search_query=upma+recipe,,Y",
+    "Breakfast,Masala Dosa,https://www.youtube.com/results?search_query=masala+dosa+recipe,,Y",
+    "Breakfast,Aloo Paratha,https://www.youtube.com/results?search_query=aloo+paratha+recipe,,Y",
+    "Main course,Dal Tadka,https://www.youtube.com/results?search_query=dal+tadka+recipe,,Y",
+    "Main course,Paneer Butter Masala,https://www.youtube.com/results?search_query=paneer+butter+masala+recipe,,Y",
+    "Main course,Jeera Rice,https://www.youtube.com/results?search_query=jeera+rice+recipe,,Y",
+    "Main course,Bhindi Masala,https://www.youtube.com/results?search_query=bhindi+masala+recipe,,Y"
+  ].join("\n");
+
+  var CACHE_KEY = "recipe-page-cache-v1";
+  var TAB_KEY = "recipe-page-tab-v1";
+  var PLACEHOLDER_COLORS = ["#C2410C", "#B45309", "#15803D", "#0F766E", "#9D174D", "#6D28D9", "#1D4ED8"];
+
+  var el = {
+    title: document.getElementById("title"),
+    subtitle: document.getElementById("subtitle"),
+    tabsBar: document.getElementById("tabsBar"),
+    tabs: document.getElementById("tabs"),
+    notice: document.getElementById("notice"),
+    grid: document.getElementById("grid"),
+    status: document.getElementById("status"),
+    reload: document.getElementById("reload")
+  };
+
+  var sections = [];      // [{ label, key, dishes: [...] }]
+  var currentKey = null;
+
+  /* ---------- small helpers ---------- */
+
+  function store(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      localStorage.setItem(key, value);
+    } catch (e) { /* private mode or blocked storage: carry on without it */ }
+    return null;
+  }
+
+  function showNotice(text, isError) {
+    el.notice.textContent = text || "";
+    el.notice.hidden = !text;
+    el.notice.classList.toggle("error", !!isError);
+  }
+
+  /* Accepts the "Publish to web" link in any of its forms, or a normal
+     share link, and returns a link that gives CSV. */
+  function normalizeSheetUrl(raw) {
+    var url = String(raw || "").trim();
+    if (!/^https?:\/\//i.test(url)) return null;
+    var gid = (url.match(/[#&?]gid=(\d+)/) || [])[1];
+
+    var published = url.match(/\/spreadsheets\/d\/e\/([\w-]+)/);
+    if (published) {
+      return "https://docs.google.com/spreadsheets/d/e/" + published[1] +
+             "/pub?output=csv" + (gid ? "&single=true&gid=" + gid : "");
+    }
+    var normal = url.match(/\/spreadsheets\/d\/([\w-]+)/);
+    if (normal) {
+      return "https://docs.google.com/spreadsheets/d/" + normal[1] +
+             "/gviz/tq?tqx=out:csv" + (gid ? "&gid=" + gid : "");
+    }
+    return url; // any other CSV link
+  }
+
+  function parseCSV(text) {
+    var rows = [], row = [], cell = "", inQuotes = false;
+    text = String(text).replace(/^\uFEFF/, "");
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; } else { inQuotes = false; }
+        } else { cell += c; }
+      } else if (c === '"') { inQuotes = true; }
+      else if (c === ",") { row.push(cell); cell = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else { cell += c; }
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+
+  /* Finds the columns by their header names, so column order does not matter. */
+  function mapColumns(header) {
+    var cols = {};
+    header.forEach(function (h, i) {
+      var k = String(h).toLowerCase();
+      var type = null;
+      if (/image|photo|picture/.test(k)) type = "image";
+      else if (/show|visible|active/.test(k)) type = "show";
+      else if (/section|category|meal/.test(k)) type = "section";
+      else if (/youtube|video|link|url/.test(k)) type = "link";
+      else if (/dish|name|item|recipe/.test(k)) type = "name";
+      if (type && cols[type] === undefined) cols[type] = i;
+    });
+    return cols;
+  }
+
+  function safeUrl(raw) {
+    var s = String(raw || "").trim();
+    if (!s) return null;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(s)) s = "https://" + s;
+    try {
+      var u = new URL(s);
+      return (u.protocol === "https:" || u.protocol === "http:") ? u.href : null;
+    } catch (e) { return null; }
+  }
+
+  function youtubeId(link) {
+    if (!link) return null;
+    try {
+      var u = new URL(link);
+      var host = u.hostname.replace(/^(www|m|music)\./, "");
+      var id = null;
+      if (host === "youtu.be") id = u.pathname.split("/")[1];
+      else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+        if (u.searchParams.get("v")) id = u.searchParams.get("v");
+        else {
+          var m = u.pathname.match(/^\/(shorts|embed|live|v)\/([^/?#]+)/);
+          if (m) id = m[2];
+        }
+      }
+      return id && /^[\w-]{11}$/.test(id) ? id : null;
+    } catch (e) { return null; }
+  }
+
+  /* Google Drive share links do not work as pictures directly; convert them. */
+  function imageUrl(raw) {
+    var url = safeUrl(raw);
+    if (!url) return null;
+    var drive = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/);
+    if (drive) return "https://drive.google.com/thumbnail?id=" + drive[1] + "&sz=w1200";
+    return url;
+  }
+
+  function isHidden(value) {
+    return /^(n|no|0|false|hide|hidden)$/i.test(String(value || "").trim());
+  }
+
+  /* ---------- turn the sheet into sections ---------- */
+
+  function buildSections(csvText) {
+    var trimmed = String(csvText).trim();
+    if (/^<(!doctype|html)/i.test(trimmed)) {
+      throw new Error("The sheet link did not return a list. Check that the sheet is published to the web as CSV.");
+    }
+    var rows = parseCSV(trimmed);
+    if (!rows.length) throw new Error("The sheet is empty.");
+
+    var cols = mapColumns(rows[0]);
+    if (cols.section === undefined || cols.name === undefined || cols.link === undefined) {
+      throw new Error("The sheet needs these column headings in row 1: Section, Dish name, YouTube link.");
+    }
+
+    var out = [], byKey = {};
+    rows.slice(1).forEach(function (r) {
+      var name = String(r[cols.name] || "").trim();
+      if (!name) return;
+      if (cols.show !== undefined && isHidden(r[cols.show])) return;
+
+      var label = String(r[cols.section] || "").trim() || "Other";
+      var key = label.toLowerCase();
+      if (!byKey[key]) { byKey[key] = { label: label, key: key, dishes: [] }; out.push(byKey[key]); }
+
+      var link = safeUrl(r[cols.link]);
+      var vid = youtubeId(link);
+      var custom = cols.image !== undefined ? imageUrl(r[cols.image]) : null;
+      byKey[key].dishes.push({ name: name, link: link, videoId: vid, customImage: custom });
+    });
+    return out;
+  }
+
+  /* ---------- draw the page ---------- */
+
+  function placeholder(name) {
+    var box = document.createElement("div");
+    box.className = "placeholder";
+    var sum = 0;
+    for (var i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+    box.style.background = PLACEHOLDER_COLORS[sum % PLACEHOLDER_COLORS.length];
+    // First visible letter, kept whole for Hindi and other Indian scripts.
+    var first = Array.from(name)[0];
+    try {
+      first = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+        .segment(name)[Symbol.iterator]().next().value.segment;
+    } catch (e) { /* older phones: fall back to the first character */ }
+    box.textContent = first.toUpperCase();
+    box.setAttribute("aria-hidden", "true");
+    return box;
+  }
+
+  function buildThumb(dish) {
+    var thumb = document.createElement("div");
+    thumb.className = "thumb";
+
+    var src = dish.customImage ||
+      (dish.videoId ? "https://i.ytimg.com/vi/" + dish.videoId + "/hqdefault.jpg" : null);
+
+    if (src) {
+      var img = document.createElement("img");
+      img.alt = "";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.onerror = function () { img.replaceWith(placeholder(dish.name)); };
+      if (!dish.customImage) {
+        // Once the standard photo is in, try the sharper one. Not every video has it.
+        img.addEventListener("load", function () {
+          // YouTube sends a tiny grey picture for a deleted or mistyped video.
+          if (img.naturalWidth <= 120) { img.replaceWith(placeholder(dish.name)); return; }
+          var sharp = new Image();
+          sharp.onload = function () { if (sharp.naturalWidth >= 640) img.src = sharp.src; };
+          sharp.src = "https://i.ytimg.com/vi/" + dish.videoId + "/maxresdefault.jpg";
+        }, { once: true });
+      }
+      img.src = src;
+      thumb.appendChild(img);
+    } else {
+      thumb.appendChild(placeholder(dish.name));
+    }
+
+    if (dish.link) {
+      var play = document.createElement("span");
+      play.className = "play";
+      play.setAttribute("aria-hidden", "true");
+      thumb.appendChild(play);
+    }
+    return thumb;
+  }
+
+  function renderGrid() {
+    el.grid.textContent = "";
+    var section = sections.filter(function (s) { return s.key === currentKey; })[0];
+    if (!section || !section.dishes.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "No dishes here yet.";
+      el.grid.appendChild(empty);
+      return;
+    }
+    section.dishes.forEach(function (dish) {
+      var li = document.createElement("li");
+      var tile = document.createElement(dish.link ? "a" : "div");
+      tile.className = "tile" + (dish.link ? "" : " no-link");
+      if (dish.link) {
+        tile.href = dish.link;
+        tile.target = "_blank";
+        tile.rel = "noopener noreferrer";
+      }
+      tile.appendChild(buildThumb(dish));
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = dish.name;
+      tile.appendChild(name);
+      li.appendChild(tile);
+      el.grid.appendChild(li);
+    });
+  }
+
+  function selectTab(key, scroll) {
+    currentKey = key;
+    store(TAB_KEY, key);
+    Array.prototype.forEach.call(el.tabs.children, function (b) {
+      b.setAttribute("aria-selected", b.dataset.key === key ? "true" : "false");
+    });
+    renderGrid();
+    if (scroll) window.scrollTo(0, 0);
+  }
+
+  function render(newSections) {
+    sections = newSections;
+    el.tabs.textContent = "";
+    sections.forEach(function (s) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "tab";
+      b.setAttribute("role", "tab");
+      b.dataset.key = s.key;
+      b.textContent = s.label;
+      b.addEventListener("click", function () { selectTab(s.key, true); });
+      el.tabs.appendChild(b);
+    });
+    el.tabsBar.hidden = sections.length < 2;
+
+    var keys = sections.map(function (s) { return s.key; });
+    var wanted = currentKey || store(TAB_KEY);
+    selectTab(keys.indexOf(wanted) >= 0 ? wanted : keys[0], false);
+  }
+
+  function setStatus(text) { el.status.textContent = text; }
+
+  function timeNow() {
+    return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  /* ---------- load ---------- */
+
+  function load() {
+    var url = normalizeSheetUrl(CONFIG.SHEET_CSV_URL);
+
+    if (!url) {
+      render(buildSections(SAMPLE_CSV));
+      showNotice("Sample list. Paste your Google Sheet link into index.html to show your own dishes.");
+      setStatus("");
+      return;
+    }
+
+    // Show the last saved list straight away, then refresh from the sheet.
+    var cached = store(CACHE_KEY);
+    var hadCache = false;
+    if (cached && !sections.length) {
+      try { render(buildSections(cached)); hadCache = true; } catch (e) { /* ignore a bad cache */ }
+    } else if (sections.length) { hadCache = true; }
+
+    setStatus("Loading...");
+    var bust = (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+
+    fetch(url + bust, { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("The sheet could not be opened (error " + res.status + "). Check that it is published to the web.");
+        return res.text();
+      })
+      .then(function (text) {
+        var built = buildSections(text);
+        if (!built.length) throw new Error("The sheet has no dishes to show yet.");
+        render(built);
+        store(CACHE_KEY, text);
+        showNotice("");
+        setStatus("Updated " + timeNow());
+      })
+      .catch(function (err) {
+        if (hadCache) {
+          showNotice("Could not refresh. Showing the last saved list.");
+          setStatus("");
+        } else {
+          el.grid.textContent = "";
+          el.tabsBar.hidden = true;
+          var msg = err && err.message && !/fetch|network|load/i.test(err.message)
+            ? err.message
+            : "Could not load the list. Check the internet connection and the sheet link.";
+          // Google refuses to send the sheet to a page opened by double-clicking the file.
+          if (location.protocol === "file:") {
+            msg = "This page was opened as a file, and Google does not send the sheet to files. " +
+                  "Open the website link instead, or start it with the start-local file in this folder.";
+          }
+          showNotice(msg, true);
+          setStatus("");
+        }
+      });
+  }
+
+  el.title.textContent = CONFIG.PAGE_TITLE || "Recipes";
+  document.title = CONFIG.PAGE_TITLE || "Recipes";
+  el.subtitle.textContent = CONFIG.PAGE_SUBTITLE || "";
+  el.subtitle.hidden = !CONFIG.PAGE_SUBTITLE;
+  el.reload.addEventListener("click", load);
+
+  // Exposed for testing only.
+  window.__recipePage = {
+    parseCSV: parseCSV, buildSections: buildSections, youtubeId: youtubeId,
+    normalizeSheetUrl: normalizeSheetUrl, imageUrl: imageUrl
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>
