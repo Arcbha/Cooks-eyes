@@ -138,9 +138,32 @@ function doPost(e) {
   }
 }
 
-// Opening the web app address in a browser just confirms it is running.
-function doGet() {
-  return reply({ ok: true, message: "Voice note helper is running." });
+// The recipe page asks for a voice note with "?voice=<Drive file id>" and gets the
+// sound back, because Google Drive will not play its files inside other pages.
+// Only files in the voice notes folder are handed out.
+// Opening the web app address on its own just confirms it is running.
+function doGet(e) {
+  var id = e && e.parameter && e.parameter.voice;
+  if (!id) return reply({ ok: true, message: "Voice note helper is running." });
+  try {
+    var file = DriveApp.getFileById(id);
+    if (!inVoiceFolder(file)) {
+      return reply({ ok: false, error: 'This file is not in the "' + VOICE_FOLDER_NAME + '" folder.' });
+    }
+    var blob = file.getBlob();
+    return reply({ ok: true, mimeType: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) });
+  } catch (err) {
+    return reply({ ok: false, error: "Voice note not found." });
+  }
+}
+
+function inVoiceFolder(file) {
+  var folderId = voiceFolder().getId();
+  var parents = file.getParents();
+  while (parents.hasNext()) {
+    if (parents.next().getId() === folderId) return true;
+  }
+  return false;
 }
 
 /* ---------------- shared bits ---------------- */

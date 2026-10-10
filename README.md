@@ -78,9 +78,14 @@ notes**, then run the menu. It fills in the **Voice link** column, makes the
 files playable, and lists any file it couldn't match. (Menus need a computer,
 or the phone's browser in "Desktop site" mode.)
 
-**By hand:** upload the recording to Google Drive, set **Share → General access
-→ Anyone with the link**, copy the link, and paste it into the dish's **Voice
-link** cell.
+**By hand:** upload the recording into the **Recipe voice notes** folder in
+Google Drive, set **Share → General access → Anyone with the link**, copy the
+link, and paste it into the dish's **Voice link** cell.
+
+Google Drive will not play its files inside other web pages, so the recipe page
+gets Drive voice notes through the helper script, which only hands out files in
+the **Recipe voice notes** folder. A Drive note stored anywhere else opens in
+Drive instead of playing on the page.
 
 m4a and mp3 files play in the page on every phone; WhatsApp (opus) notes play on
 Android, and on iPhone they open in Google Drive instead.

@@ -536,6 +536,30 @@ const CONFIG = {
   var player = new Audio();
   player.preload = "none";
   var activeVoice = null;   // the button that is playing or loading
+  var voiceCache = {};      // Drive file id -> sound ready to play
+
+  // A moment of silence, started during the tap so phones allow the real sound after it loads.
+  var SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+  function playingSilence() { return player.src === SILENCE; }
+
+  /* Google Drive will not play its files inside this page, so Drive voice notes
+     come through the voice notes helper instead. Other links play directly. */
+  function voiceSource(btn) {
+    var id = btn.dataset.driveId;
+    var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
+    if (!id || !helper) return Promise.resolve(btn.dataset.src);
+    if (voiceCache[id]) return Promise.resolve(voiceCache[id]);
+    return fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "voice=" + encodeURIComponent(id), { credentials: "omit" })
+      .then(function (res) { return res.json(); })
+      .then(function (out) {
+        if (!out || !out.ok || !out.data) throw new Error((out && out.error) || "No sound returned.");
+        var raw = atob(out.data);
+        var bytes = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+        voiceCache[id] = URL.createObjectURL(new Blob([bytes], { type: out.mimeType || "audio/mp4" }));
+        return voiceCache[id];
+      });
+  }
 
   function voiceLabel(btn, icon, text) {
     btn.textContent = "";
@@ -578,19 +602,24 @@ const CONFIG = {
     activeVoice = btn;
     btn.classList.add("playing");
     voiceLabel(btn, "\u23F3", "Loading...");
-    player.src = btn.dataset.src;
-    player.play().then(function () {
-      if (activeVoice === btn) voiceLabel(btn, "\u23F9", "Stop");
+    player.src = SILENCE;
+    player.play().catch(function () { /* replaced by the real sound below */ });
+    voiceSource(btn).then(function (src) {
+      if (activeVoice !== btn) return null;
+      player.src = src;
+      return player.play().then(function () {
+        if (activeVoice === btn) voiceLabel(btn, "\u23F9", "Stop");
+      });
     }).catch(function (err) {
       if (err && err.name === "AbortError") return; // another note was tapped
-      voiceFailed(btn);
+      if (activeVoice === btn) voiceFailed(btn);
     });
   }
 
-  player.addEventListener("ended", stopVoice);
-  player.addEventListener("error", function () { if (activeVoice) voiceFailed(activeVoice); });
+  player.addEventListener("ended", function () { if (!playingSilence()) stopVoice(); });
+  player.addEventListener("error", function () { if (activeVoice && !playingSilence()) voiceFailed(activeVoice); });
   player.addEventListener("timeupdate", function () {
-    if (!activeVoice || !player.duration || !isFinite(player.duration)) return;
+    if (!activeVoice || playingSilence() || !player.duration || !isFinite(player.duration)) return;
     var bar = activeVoice.querySelector(".progress");
     if (bar) bar.style.width = (100 * player.currentTime / player.duration) + "%";
   });
@@ -600,6 +629,8 @@ const CONFIG = {
     btn.type = "button";
     btn.className = "voice";
     btn.dataset.src = dish.voice.src;
+    var drive = dish.voice.page.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/);
+    if (drive) btn.dataset.driveId = drive[1];
     btn.dataset.page = dish.voice.page;
     voiceIdle(btn);
     btn.addEventListener("click", function () { playVoice(btn); });
