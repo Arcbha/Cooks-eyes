@@ -17,6 +17,7 @@ The list is managed from a Google Sheet; the page reads it every time it opens.
 | YouTube link | Video link as copied from YouTube (normal, youtu.be, Shorts) | Yes |
 | Image link | Your own picture, only if you don't want the YouTube photo | No |
 | Show | `N` hides the dish; blank or `Y` shows it | No |
+| Voice link | Google Drive link to a spoken recipe; adds a **Listen to instructions** button under the dish | No |
 
 To show an **Edit dish list** link at the bottom of the page, paste the sheet's
 normal edit link (from the browser address bar while the sheet is open) into
@@ -25,6 +26,48 @@ shared with can edit; anyone else just sees a "request access" page.
 
 Dishes appear in row order. Edits show up on the page within a few minutes
 (Google refreshes published sheets periodically); tap **Reload list** to refetch.
+
+## Voice instructions
+
+Any dish can have a voice note. The cook taps **Listen to instructions** under
+the photo and it plays right there; tapping again stops it. Only one plays at a
+time. If a phone can't play the file in the page, the button changes to
+**Open voice note**, which plays it in Google Drive instead.
+
+**Record:** use the phone's voice recorder app, or send a WhatsApp voice note
+to yourself. m4a and mp3 work everywhere; WhatsApp notes work on Android, and on
+iPhone they open in Google Drive instead. Keep each note under a few minutes.
+
+### Easy way: one Drive folder + the helper (recommended)
+
+One-time setup (5 minutes, on a computer):
+1. In Google Drive, create a folder named exactly **Recipe voice notes**.
+2. Open the recipe sheet, choose **Extensions → Apps Script**, delete what is
+   there, paste in everything from `voice-notes-helper.gs`, and click **Save**.
+3. Reload the sheet. A new **Recipe page** menu appears next to Help.
+4. The first time you use it, Google asks for permission. Choose your account,
+   then **Advanced → Go to (project name)** → **Allow**. (Google shows this
+   warning for every script you write yourself.)
+
+Each time you add voice notes:
+1. Name each file exactly like the dish in the sheet, e.g. `Poha.m4a`,
+   `Yellow Dal.mp3` (capital letters and the file ending don't matter).
+2. Upload them into the **Recipe voice notes** folder (Drive app on the phone:
+   **+ → Upload**; WhatsApp: share the voice note → Drive).
+3. In the sheet, choose **Recipe page → Link voice notes**. It fills in the
+   **Voice link** column, makes the files playable, and tells you which files it
+   couldn't match. (Menus need a computer, or the phone's browser in "Desktop
+   site" mode; the Sheets app doesn't show them.)
+
+To replace a note, upload the new file, clear that dish's Voice link cell, and
+run **Link voice notes** again.
+
+### Manual way (from the phone, no setup)
+
+1. Upload the recording to Google Drive.
+2. On the file, tap **⋮ → Share → General access → Anyone with the link**.
+3. Tap **⋮ → Copy link**, then paste it into the dish's **Voice link** cell
+   (add a column with that heading if it isn't there yet).
 
 ## Open it on a computer
 

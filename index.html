@@ -26,7 +26,10 @@ const CONFIG = {
 
   // Text shown at the top of the page
   PAGE_TITLE: "Mohna's Recipes",
-  PAGE_SUBTITLE: ""
+  PAGE_SUBTITLE: "",
+
+  // Words on the button under dishes that have a voice note
+  VOICE_BUTTON_TEXT: "Listen to instructions"
 };
 </script>
 
@@ -99,13 +102,15 @@ const CONFIG = {
   @media (min-width: 640px)  { .grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 1000px) { .grid { grid-template-columns: 1fr 1fr 1fr; } }
 
-  .tile {
-    display: block; text-decoration: none; color: inherit;
+  .card {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(42, 27, 16, 0.07);
+  }
+  .tile {
+    display: block; text-decoration: none; color: inherit;
     transition: transform 0.08s ease;
   }
   .tile:active { transform: scale(0.985); }
@@ -141,6 +146,23 @@ const CONFIG = {
     content: "Video link missing"; display: block;
     margin-top: 2px; font-size: 0.95rem; font-weight: 500; color: var(--muted);
   }
+
+  /* Voice note button under a dish */
+  .voice {
+    position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; min-height: 62px; padding: 10px 16px;
+    border: 0; border-top: 1px solid var(--line);
+    background: #FFF3D6; color: var(--ink);
+    font: inherit; font-size: 1.2rem; font-weight: 700;
+    text-decoration: none; cursor: pointer;
+  }
+  .voice .icon { font-size: 1.5rem; line-height: 1; }
+  .voice.playing { background: var(--accent); color: #FFFFFF; }
+  .voice .progress {
+    position: absolute; left: 0; bottom: 0; height: 5px; width: 0;
+    background: rgba(255, 255, 255, 0.85);
+  }
+  .voice:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
   .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
 
@@ -297,6 +319,7 @@ const CONFIG = {
       var k = String(h).toLowerCase();
       var type = null;
       if (/image|photo|picture/.test(k)) type = "image";
+      else if (/voice|audio|sound|instruction/.test(k)) type = "voice";
       else if (/show|visible|active/.test(k)) type = "show";
       else if (/section|category|meal/.test(k)) type = "section";
       else if (/youtube|video|link|url/.test(k)) type = "link";
@@ -343,6 +366,15 @@ const CONFIG = {
     return url;
   }
 
+  /* A Google Drive share link opens a page, not the sound; point at the file itself. */
+  function audioUrl(raw) {
+    var url = safeUrl(raw);
+    if (!url) return null;
+    var drive = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]+)/);
+    if (drive) return "https://drive.google.com/uc?export=download&id=" + drive[1];
+    return url;
+  }
+
   function isHidden(value) {
     return /^(n|no|0|false|hide|hidden)$/i.test(String(value || "").trim());
   }
@@ -375,7 +407,11 @@ const CONFIG = {
       var link = safeUrl(r[cols.link]);
       var vid = youtubeId(link);
       var custom = cols.image !== undefined ? imageUrl(r[cols.image]) : null;
-      byKey[key].dishes.push({ name: name, link: link, videoId: vid, customImage: custom });
+      var voicePage = cols.voice !== undefined ? safeUrl(r[cols.voice]) : null;
+      byKey[key].dishes.push({
+        name: name, link: link, videoId: vid, customImage: custom,
+        voice: voicePage ? { src: audioUrl(voicePage), page: voicePage } : null
+      });
     });
     return out;
   }
@@ -438,6 +474,81 @@ const CONFIG = {
     return thumb;
   }
 
+  /* ---------- voice notes: one plays at a time ---------- */
+
+  var player = new Audio();
+  player.preload = "none";
+  var activeVoice = null;   // the button that is playing or loading
+
+  function voiceLabel(btn, icon, text) {
+    btn.textContent = "";
+    var i = document.createElement("span");
+    i.className = "icon"; i.setAttribute("aria-hidden", "true"); i.textContent = icon;
+    var t = document.createElement("span");
+    t.textContent = text;
+    var bar = document.createElement("span");
+    bar.className = "progress";
+    btn.appendChild(i); btn.appendChild(t); btn.appendChild(bar);
+  }
+
+  function voiceIdle(btn) {
+    btn.classList.remove("playing");
+    voiceLabel(btn, "\uD83D\uDD0A", CONFIG.VOICE_BUTTON_TEXT || "Listen to instructions");
+  }
+
+  function stopVoice() {
+    player.pause();
+    if (activeVoice) voiceIdle(activeVoice);
+    activeVoice = null;
+  }
+
+  /* If the phone cannot play the file here, offer it in Google Drive's own player instead. */
+  function voiceFailed(btn) {
+    if (!btn || !btn.isConnected) return;
+    var link = document.createElement("a");
+    link.className = "voice";
+    link.href = btn.dataset.page;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    voiceLabel(link, "\uD83D\uDD0A", "Open voice note");
+    btn.replaceWith(link);
+    if (activeVoice === btn) activeVoice = null;
+  }
+
+  function playVoice(btn) {
+    if (activeVoice === btn) { stopVoice(); return; }
+    stopVoice();
+    activeVoice = btn;
+    btn.classList.add("playing");
+    voiceLabel(btn, "\u23F3", "Loading...");
+    player.src = btn.dataset.src;
+    player.play().then(function () {
+      if (activeVoice === btn) voiceLabel(btn, "\u23F9", "Stop");
+    }).catch(function (err) {
+      if (err && err.name === "AbortError") return; // another note was tapped
+      voiceFailed(btn);
+    });
+  }
+
+  player.addEventListener("ended", stopVoice);
+  player.addEventListener("error", function () { if (activeVoice) voiceFailed(activeVoice); });
+  player.addEventListener("timeupdate", function () {
+    if (!activeVoice || !player.duration || !isFinite(player.duration)) return;
+    var bar = activeVoice.querySelector(".progress");
+    if (bar) bar.style.width = (100 * player.currentTime / player.duration) + "%";
+  });
+
+  function buildVoiceButton(dish) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "voice";
+    btn.dataset.src = dish.voice.src;
+    btn.dataset.page = dish.voice.page;
+    voiceIdle(btn);
+    btn.addEventListener("click", function () { playVoice(btn); });
+    return btn;
+  }
+
   function renderGrid() {
     el.grid.textContent = "";
     var section = sections.filter(function (s) { return s.key === currentKey; })[0];
@@ -450,12 +561,14 @@ const CONFIG = {
     }
     section.dishes.forEach(function (dish) {
       var li = document.createElement("li");
+      li.className = "card";
       var tile = document.createElement(dish.link ? "a" : "div");
       tile.className = "tile" + (dish.link ? "" : " no-link");
       if (dish.link) {
         tile.href = dish.link;
         tile.target = "_blank";
         tile.rel = "noopener noreferrer";
+        tile.addEventListener("click", stopVoice);
       }
       tile.appendChild(buildThumb(dish));
       var name = document.createElement("div");
@@ -463,11 +576,13 @@ const CONFIG = {
       name.textContent = dish.name;
       tile.appendChild(name);
       li.appendChild(tile);
+      if (dish.voice) li.appendChild(buildVoiceButton(dish));
       el.grid.appendChild(li);
     });
   }
 
   function selectTab(key, scroll) {
+    stopVoice();
     currentKey = key;
     store(TAB_KEY, key);
     Array.prototype.forEach.call(el.tabs.children, function (b) {
@@ -574,7 +689,7 @@ const CONFIG = {
   // Exposed for testing only.
   window.__recipePage = {
     parseCSV: parseCSV, buildSections: buildSections, youtubeId: youtubeId,
-    normalizeSheetUrl: normalizeSheetUrl, imageUrl: imageUrl
+    normalizeSheetUrl: normalizeSheetUrl, imageUrl: imageUrl, audioUrl: audioUrl
   };
 
   load();
