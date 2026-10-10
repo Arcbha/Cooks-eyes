@@ -252,7 +252,7 @@ const CONFIG = {
 
   <section class="recorder" id="recorder" hidden>
     <h2>Record a voice note</h2>
-    <p class="help">Pick the dish, record, listen back, then save. It shows on the recipe page within about 5 minutes.</p>
+    <p class="help">Pick the dish, record, listen back, then save. It shows on the recipe page straight away.</p>
     <label class="field">Dish
       <select id="recDish"></select>
     </label>
@@ -344,7 +344,7 @@ const CONFIG = {
     var normal = url.match(/\/spreadsheets\/d\/([\w-]+)/);
     if (normal) {
       return "https://docs.google.com/spreadsheets/d/" + normal[1] +
-             "/gviz/tq?tqx=out:csv" + (gid ? "&gid=" + gid : "");
+             "/gviz/tq?tqx=out:csv&headers=1" + (gid ? "&gid=" + gid : "");
     }
     return url; // any other CSV link
   }
@@ -678,10 +678,42 @@ const CONFIG = {
 
   /* ---------- load ---------- */
 
-  function load() {
-    var url = normalizeSheetUrl(CONFIG.SHEET_CSV_URL);
+  /* Where to read the list from, best first. The sheet itself (through its edit
+     link) is always current. The published copy can lag by minutes, and
+     Google's servers sometimes hand out an older version of it. */
+  function sheetSources() {
+    var list = [];
+    var live = /\/spreadsheets\/d\/(?!e\/)/.test(CONFIG.SHEET_EDIT_URL || "")
+      ? normalizeSheetUrl(CONFIG.SHEET_EDIT_URL) : null;
+    var published = normalizeSheetUrl(CONFIG.SHEET_CSV_URL);
+    if (live) list.push(live);
+    if (published && published !== live) list.push(published);
+    return list;
+  }
 
-    if (!url) {
+  function fetchList(urls) {
+    var url = urls[0];
+    var bust = (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+    return fetch(url + bust, { cache: "no-store", credentials: "omit" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("The sheet could not be opened (error " + res.status + "). Check that it is published to the web.");
+        return res.text();
+      })
+      .then(function (text) {
+        var built = buildSections(text);
+        if (!built.length) throw new Error("The sheet has no dishes to show yet.");
+        return { text: text, sections: built };
+      })
+      .catch(function (err) {
+        if (urls.length > 1) return fetchList(urls.slice(1));
+        throw err;
+      });
+  }
+
+  function load() {
+    var sources = sheetSources();
+
+    if (!sources.length) {
       render(buildSections(SAMPLE_CSV));
       showNotice("Sample list. Paste your Google Sheet link into index.html to show your own dishes.");
       setStatus("");
@@ -696,18 +728,11 @@ const CONFIG = {
     } else if (sections.length) { hadCache = true; }
 
     setStatus("Loading...");
-    var bust = (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
 
-    fetch(url + bust, { cache: "no-store" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("The sheet could not be opened (error " + res.status + "). Check that it is published to the web.");
-        return res.text();
-      })
-      .then(function (text) {
-        var built = buildSections(text);
-        if (!built.length) throw new Error("The sheet has no dishes to show yet.");
-        render(built);
-        store(CACHE_KEY, text);
+    fetchList(sources)
+      .then(function (got) {
+        render(got.sections);
+        store(CACHE_KEY, got.text);
         showNotice("");
         setStatus("Updated " + timeNow());
       })
@@ -869,7 +894,7 @@ const CONFIG = {
           if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
           store(PASS_KEY, pass);
           resetRecorder();
-          recMessage("Saved for " + dish + ". It shows on the recipe page within about 5 minutes.", "ok");
+          recMessage("Saved for " + dish + ". Open the recipe page (or tap Reload list) to see it.", "ok");
         })
         .catch(function (err) {
           var m = err && err.message && !/fetch|network|json|token/i.test(err.message)

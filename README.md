@@ -24,8 +24,11 @@ normal edit link (from the browser address bar while the sheet is open) into
 `SHEET_EDIT_URL` near the top of `index.html`. Only Google accounts the sheet is
 shared with can edit; anyone else just sees a "request access" page.
 
-Dishes appear in row order. Edits show up on the page within a few minutes
-(Google refreshes published sheets periodically); tap **Reload list** to refetch.
+Dishes appear in row order. The page reads the sheet directly, so edits show
+up as soon as the page is opened again or **Reload list** is tapped. This needs
+the sheet's sharing to stay at **Anyone with the link → Viewer**; if that is
+turned off, the page falls back to the published copy, which can lag by a few
+minutes and sometimes shows an older version.
 
 ## Voice instructions
 
@@ -41,7 +44,7 @@ Open the recipe site with `#record` on the end, e.g.
 **Record voice notes** link at the bottom of the recipe page). Pick the dish,
 tap **Record**, speak, tap **Stop**, listen back, then **Save to recipe page**.
 The note goes into your Google Drive and its link into the sheet; it shows on
-the recipe page within about 5 minutes. Recording again for the same dish
+the recipe page straight away. Recording again for the same dish
 replaces the old note. You can also pick a recording that is already on the
 phone (for example a WhatsApp voice note you saved).
 
@@ -128,5 +131,5 @@ Open the link on the phone, then:
 | "needs these column headings" | Restore Section, Dish name, YouTube link in row 1 |
 | Coloured letter tile instead of a photo | Link isn't a single video, or the video was removed |
 | "Video link missing" | YouTube link cell is empty |
-| New dish not showing | Wait a few minutes, then tap Reload list |
+| New dish or voice note not showing | Tap Reload list; check the sheet is shared as Anyone with the link → Viewer |
 | A button named "Other" | A row has an empty Section cell |
