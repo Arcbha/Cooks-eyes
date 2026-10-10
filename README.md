@@ -18,6 +18,11 @@ The list is managed from a Google Sheet; the page reads it every time it opens.
 | Image link | Your own picture, only if you don't want the YouTube photo | No |
 | Show | `N` hides the dish; blank or `Y` shows it | No |
 
+To show an **Edit dish list** link at the bottom of the page, paste the sheet's
+normal edit link (from the browser address bar while the sheet is open) into
+`SHEET_EDIT_URL` near the top of `index.html`. Only Google accounts the sheet is
+shared with can edit; anyone else just sees a "request access" page.
+
 Dishes appear in row order. Edits show up on the page within a few minutes
 (Google refreshes published sheets periodically); tap **Reload list** to refetch.
 
