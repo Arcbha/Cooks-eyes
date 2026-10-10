@@ -32,6 +32,11 @@ const CONFIG = {
   // Turns on the record page at the site address + "#record". Leave as "" to turn it off.
   VOICE_UPLOAD_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
 
+  // The meals planned on the plan page, in the order the cook sees them under Today.
+  // Each meal lists the dishes from the sections whose name contains it
+  // (so "Lunch/Dinner" dishes appear under both Lunch and Dinner).
+  MEALS: ["Breakfast", "Lunch", "Dinner"],
+
   // Words on the button under dishes that have a voice note
   VOICE_BUTTON_TEXT: "Listen to instructions"
 };
@@ -833,7 +838,8 @@ const CONFIG = {
     var rows = menuRows.filter(function (r) { return r.date === date; });
     if (!rows.length) return null;
     var lookup = dishLookup();
-    var order = dishSections.map(function (s) { return s.key; });
+    var order = planMeals().map(function (m) { return m.toLowerCase(); })
+      .concat(dishSections.map(function (s) { return s.key; }));
     var groups = [], byMeal = {}, notes = [], dishes = [];
     rows.forEach(function (r) {
       if (r.note && notes.indexOf(r.note) < 0) notes.push(r.note);
@@ -1193,21 +1199,35 @@ const CONFIG = {
     return now.getHours() >= 14 ? addDays(dayKey(now), 1) : dayKey(now);
   }
 
+  function planMeals() {
+    return (CONFIG.MEALS && CONFIG.MEALS.length) ? CONFIG.MEALS : ["Breakfast", "Lunch", "Dinner"];
+  }
+
+  // The dishes offered for a meal: those in sections named after it, or every dish if none is.
+  function dishesForMeal(meal) {
+    var m = meal.toLowerCase();
+    var matching = dishSections.filter(function (s) { return s.label.toLowerCase().indexOf(m) >= 0; });
+    var list = [], seen = {};
+    (matching.length ? matching : dishSections).forEach(function (s) {
+      s.dishes.forEach(function (d) {
+        var k = d.name.toLowerCase();
+        if (!seen[k]) { seen[k] = true; list.push(d); }
+      });
+    });
+    return list;
+  }
+
   function fillPlanner() {
     if (!pl.date.value) pl.date.value = defaultPlanDate();
     pl.dishes.textContent = "";
-    dishSections.forEach(function (s) {
+    planMeals().forEach(function (meal) {
       var box = document.createElement("fieldset");
       box.className = "plan-group";
-      box.dataset.meal = s.label;
+      box.dataset.meal = meal;
       var legend = document.createElement("legend");
-      legend.textContent = s.label;
+      legend.textContent = meal;
       box.appendChild(legend);
-      var seen = {};
-      s.dishes.forEach(function (d) {
-        var k = d.name.toLowerCase();
-        if (seen[k]) return;
-        seen[k] = true;
+      dishesForMeal(meal).forEach(function (d) {
         var row = document.createElement("label");
         row.className = "check";
         var cb = document.createElement("input");
@@ -1241,23 +1261,32 @@ const CONFIG = {
     pl.dayLabel.textContent = date ? longDate(date) : "";
     var rows = menuRows.filter(function (r) { return r.date === date && r.dish; });
     var boxes = Array.prototype.slice.call(pl.dishes.querySelectorAll(".plan-group"));
-    var used = {};
+    if (!boxes.length) return;
+    var meals = boxes.map(function (b) { return b.dataset.meal.toLowerCase(); });
+
+    // A row goes to the meal of the same name; an older row such as "Lunch/Dinner" goes to
+    // the first meal its name contains.
+    function boxIndex(meal) {
+      var m = String(meal || "").toLowerCase();
+      var i = meals.indexOf(m);
+      if (i < 0) i = meals.filter(function (x) { return m.indexOf(x) >= 0; }).map(function (x) { return meals.indexOf(x); })[0];
+      return i === undefined || i < 0 ? 0 : i;
+    }
+
+    var extras = boxes.map(function () { return []; });
     boxes.forEach(function (box) {
-      var extra = [];
-      Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (cb) {
-        cb.checked = rows.some(function (r) {
-          var hit = r.dish.toLowerCase() === cb.value.toLowerCase() &&
-                    (!r.meal || r.meal.toLowerCase() === box.dataset.meal.toLowerCase());
-          if (hit) used[r.dish.toLowerCase() + "|" + r.meal.toLowerCase()] = true;
-          return hit;
-        });
-      });
-      rows.forEach(function (r) {
-        if (r.meal.toLowerCase() === box.dataset.meal.toLowerCase() &&
-            !used[r.dish.toLowerCase() + "|" + r.meal.toLowerCase()]) extra.push(r.dish);
-      });
-      box.querySelector(".other-input").value = extra.join(", ");
+      Array.prototype.forEach.call(box.querySelectorAll("input[type=checkbox]"), function (cb) { cb.checked = false; });
     });
+    rows.forEach(function (r) {
+      var i = boxIndex(r.meal);
+      var cb = Array.prototype.filter.call(boxes[i].querySelectorAll("input[type=checkbox]"), function (c) {
+        return c.value.toLowerCase() === r.dish.toLowerCase();
+      })[0];
+      if (cb) cb.checked = true;
+      else if (extras[i].indexOf(r.dish) < 0) extras[i].push(r.dish);
+    });
+    boxes.forEach(function (box, i) { box.querySelector(".other-input").value = extras[i].join(", "); });
+
     var note = menuRows.filter(function (r) { return r.date === date && r.note; })[0];
     pl.note.value = note ? note.note : "";
     planDirty = false;

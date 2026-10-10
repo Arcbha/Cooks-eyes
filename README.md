@@ -36,14 +36,16 @@ Plan what the cook should make, and the page shows it to the cook on that day.
 
 **Planning (you):** open **https://arcbha.github.io/Cooks-eyes/#plan** (or tap
 **Plan the menu** at the bottom of the recipe page). Choose **Today**,
-**Tomorrow** or any date, tick the dishes, add anything not on the list under
+**Tomorrow** or any date, tick the dishes for **Breakfast**, **Lunch** and
+**Dinner** (each meal lists the dishes from the sections named after it, so
+"Lunch/Dinner" dishes appear under both), add anything not on the list under
 "Something else", add a note for the cook if you like, and tap **Save menu**.
 In the evening the page picks tomorrow by itself, so planning on the 9th at
 night for the 10th is the default. Opening a date that is already planned shows
 its dishes ticked, so it can be changed; saving again replaces that day's plan.
 
 **What the cook sees:** on that day the page opens on a **Today** button with
-the date, your note, and the dishes grouped by meal, each with its photo,
+the date, your note, and the dishes under Breakfast, Lunch and Dinner, each with its photo,
 video and voice note. When tomorrow is planned too, a **Tomorrow** button
 appears (handy for soaking or defrosting), but the page never opens on it by
 itself. A page left open overnight moves to the new day's menu when the phone
