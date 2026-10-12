@@ -18,6 +18,9 @@
   `CONFIG.VOICE_UPLOAD_URL`), it receives recordings from the record page
   (site address + `#record`) and saves them to Drive and the sheet. It also
   adds a sheet menu that links Drive files to dishes by file name.
+- The add page (site address + `#add`) adds a dish (YouTube link, name,
+  section) as a new row of the dish list through the same helper script; an
+  existing dish in that section only has its video link replaced on a second tap.
 - The day's menu lives in the sheet's "Menu" tab (Date, Meal, Dish name, Note),
   read live through the edit link. The plan page (site address + `#plan`) saves
   it through the same helper script, one group per meal in `CONFIG.MEALS`

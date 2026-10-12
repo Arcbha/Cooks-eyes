@@ -198,7 +198,7 @@ const CONFIG = {
   .recorder h2 { margin: 0 0 4px; font-size: var(--fs-date); font-weight: 800; line-height: 1.15; }
   .recorder .help { margin: 0 0 18px; color: var(--muted); font-size: var(--fs-body); }
   .field { display: block; margin: 0 0 16px; font-weight: 700; font-size: var(--fs-body); }
-  .field select, .field input {
+  .field select, .field input, .field > input {
     display: block; width: 100%; margin-top: 6px; min-height: 52px; padding: 10px 12px;
     border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
     font: inherit; font-size: 1.15rem; font-weight: 500;
@@ -242,6 +242,30 @@ const CONFIG = {
     border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
     font: inherit; font-size: 1.1rem; font-weight: 500; resize: vertical;
   }
+
+  /* Add page */
+  .paste-row { display: flex; gap: 10px; margin-top: 6px; }
+  .paste-row input { margin-top: 0; flex: 1 1 auto; min-width: 0; }
+  .paste-btn {
+    flex: none; min-height: 52px; padding: 0 16px; border: 2px solid var(--ink); border-radius: 14px;
+    background: var(--card); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 700; cursor: pointer;
+  }
+  .hint { display: block; margin-top: 6px; font-size: var(--fs-small); font-weight: 500; color: var(--muted); }
+  .hint.error { color: #B42318; }
+  .video-preview {
+    display: flex; gap: 12px; align-items: center; margin: -4px 0 16px; padding: 10px;
+    border: 1px solid var(--line); border-radius: 16px; background: var(--card);
+  }
+  .video-preview[hidden] { display: none; }
+  .video-preview img { flex: none; width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #EADFCB; }
+  .video-preview .vp-title { font-size: var(--fs-small); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  .video-preview .vp-by { margin-top: 2px; font-size: var(--fs-label); color: var(--muted); }
+  .chips-wrap { flex-wrap: wrap; }
+  .chips-wrap .chip { flex: 1 1 130px; }
+  .chip.new { border-style: dashed; }
+  .add-next[hidden] { display: none; }
+  #addNewSection { margin-top: 10px; }
+  .field input[hidden] { display: none; }
 
   .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 1rem; }
 
@@ -369,6 +393,39 @@ const CONFIG = {
     <a class="back" href="#">&larr; Back to recipes</a>
   </section>
 
+  <section class="recorder" id="adder" hidden>
+    <h2>Add a dish</h2>
+    <p class="help">Paste the YouTube link, name the dish and pick its section. It goes straight into the sheet.</p>
+    <label class="field">YouTube link
+      <span class="paste-row">
+        <input id="addLink" type="url" inputmode="url" autocomplete="off" placeholder="https://youtu.be/...">
+        <button class="paste-btn" id="addPaste" type="button">Paste</button>
+      </span>
+      <span class="hint" id="addLinkHint"></span>
+    </label>
+    <div class="video-preview" id="addPreview" hidden>
+      <img id="addThumb" alt="">
+      <div><div class="vp-title" id="addTitle"></div><div class="vp-by" id="addBy"></div></div>
+    </div>
+    <label class="field">Dish name
+      <input id="addName" type="text" autocomplete="off" placeholder="For example: Aloo Paratha">
+    </label>
+    <div class="field">Section
+      <div class="chips chips-wrap" id="addSections" style="margin-top:6px"></div>
+      <input id="addNewSection" type="text" autocomplete="off" placeholder="New section, for example: Snacks" hidden>
+    </div>
+    <label class="field">Passcode
+      <input id="addPass" type="password" autocomplete="current-password">
+    </label>
+    <button class="big-btn primary" id="addSave" type="button">Add dish</button>
+    <p class="rec-msg" id="addMsg" hidden></p>
+    <div class="add-next" id="addNext" hidden>
+      <a class="big-btn" id="addRecord" href="#record">&#127908; Record voice instructions</a>
+      <button class="big-btn" id="addAnother" type="button">Add another dish</button>
+    </div>
+    <a class="back" href="#">&larr; Back to recipes</a>
+  </section>
+
   <section class="recorder" id="planner" hidden>
     <h2>Plan the menu</h2>
     <p class="help">Choose the day and tick what to cook. The cook sees it under &ldquo;Today&rdquo; on that day.</p>
@@ -397,6 +454,7 @@ const CONFIG = {
     <button class="reload" id="reload" type="button">Reload list</button>
     <p class="edit-link" id="editWrap" hidden><a id="editLink" target="_blank" rel="noopener noreferrer">Edit dish list</a></p>
     <p class="edit-link" id="planWrap" hidden><a href="#plan">Plan the menu</a></p>
+    <p class="edit-link" id="addWrap" hidden><a href="#add">Add a dish</a></p>
     <p class="edit-link" id="recordWrap" hidden><a href="#record">Record voice notes</a></p>
   </footer>
 </div>
@@ -1024,6 +1082,7 @@ const CONFIG = {
     el.tabsBar.hidden = sections.length < 2;
     fillDishPicker();
     if (!planDirty) fillPlanner();
+    fillAddSections();
 
     var keys = sections.map(function (s) { return s.key; });
     // Opening the page shows today's menu first, when there is one.
@@ -1285,7 +1344,7 @@ const CONFIG = {
         .then(function (out) {
           if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
           store(PASS_KEY, pass);
-          pl.pass.value = pass;
+          pl.pass.value = ad.pass.value = pass;
           resetRecorder();
           recMessage("Saved for " + dish + ". Open the recipe page (or tap Reload list) to see it.", "ok");
         })
@@ -1463,7 +1522,7 @@ const CONFIG = {
       .then(function (out) {
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
         store(PASS_KEY, pass);
-        rc.pass.value = pass;
+        rc.pass.value = ad.pass.value = pass;
         // Show the new plan straight away; the next load reads it back from the sheet.
         menuRows = menuRows.filter(function (r) { return r.date !== date; });
         items.forEach(function (it, i) {
@@ -1501,28 +1560,217 @@ const CONFIG = {
   pl.note.addEventListener("input", function () { planDirty = true; });
   pl.save.addEventListener("click", savePlan);
 
+  /* ---------- add page: site address + #add ---------- */
+
+  var ad = {
+    page: document.getElementById("adder"),
+    link: document.getElementById("addLink"),
+    paste: document.getElementById("addPaste"),
+    hint: document.getElementById("addLinkHint"),
+    preview: document.getElementById("addPreview"),
+    thumb: document.getElementById("addThumb"),
+    title: document.getElementById("addTitle"),
+    by: document.getElementById("addBy"),
+    name: document.getElementById("addName"),
+    sections: document.getElementById("addSections"),
+    newSection: document.getElementById("addNewSection"),
+    pass: document.getElementById("addPass"),
+    save: document.getElementById("addSave"),
+    msg: document.getElementById("addMsg"),
+    next: document.getElementById("addNext"),
+    record: document.getElementById("addRecord"),
+    another: document.getElementById("addAnother")
+  };
+  var addSection = "";      // the section chip picked, or "+" for a new one
+  var addReplace = false;   // the dish exists; the next save replaces its video link
+  var previewFor = "";
+
+  function addMessage(text, kind) {
+    ad.msg.textContent = text || "";
+    ad.msg.hidden = !text;
+    ad.msg.className = "rec-msg" + (kind ? " " + kind : "");
+  }
+
+  function fillAddSections() {
+    var labels = dishSections.map(function (s) { return s.label; });
+    if (!addSection && labels.length) addSection = labels[0];
+    ad.sections.textContent = "";
+    labels.concat(["+"]).forEach(function (label) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (label === "+" ? " new" : "");
+      b.dataset.section = label;
+      b.textContent = label === "+" ? "+ New section" : label;
+      b.setAttribute("aria-pressed", label === addSection ? "true" : "false");
+      ad.sections.appendChild(b);
+    });
+    ad.newSection.hidden = addSection !== "+";
+  }
+
+  // Shows which video the link points to, so a wrong link is caught before saving.
+  function updatePreview() {
+    var raw = ad.link.value.trim();
+    var id = youtubeId(safeUrl(raw));
+    addReplace = false;
+    ad.save.textContent = "Add dish";
+    if (!raw) { ad.preview.hidden = true; ad.hint.textContent = ""; previewFor = ""; return; }
+    if (!id) {
+      ad.preview.hidden = true;
+      ad.hint.textContent = "This doesn't look like a YouTube video link. Copy it from the video's Share button.";
+      ad.hint.className = "hint error";
+      previewFor = "";
+      return;
+    }
+    ad.hint.textContent = "";
+    ad.hint.className = "hint";
+    if (previewFor === id) return;
+    previewFor = id;
+    ad.thumb.src = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+    ad.title.textContent = "Checking the video...";
+    ad.by.textContent = "";
+    ad.preview.hidden = false;
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id), { credentials: "omit" })
+      .then(function (res) { if (!res.ok) throw new Error(); return res.json(); })
+      .then(function (info) {
+        if (previewFor !== id) return;
+        ad.title.textContent = info.title || "YouTube video";
+        ad.by.textContent = info.author_name || "";
+      })
+      .catch(function () {
+        if (previewFor !== id) return;
+        ad.title.textContent = "Could not check this video. It may be private or removed.";
+      });
+  }
+
+  function saveDish() {
+    var link = ad.link.value.trim();
+    var name = ad.name.value.trim();
+    var section = addSection === "+" ? ad.newSection.value.trim() : addSection;
+    var pass = ad.pass.value.trim();
+    if (!youtubeId(safeUrl(link))) { addMessage("Paste the YouTube link first.", "error"); ad.link.focus(); return; }
+    if (!name) { addMessage("Type the dish name.", "error"); ad.name.focus(); return; }
+    if (!section) { addMessage("Pick a section, or type the new section's name.", "error"); return; }
+    if (!pass) { addMessage("Type the passcode first.", "error"); ad.pass.focus(); return; }
+
+    ad.save.disabled = true;
+    ad.save.textContent = "Saving...";
+    addMessage("");
+    fetch(CONFIG.VOICE_UPLOAD_URL, {
+      method: "POST",
+      body: JSON.stringify({ passcode: pass, action: "addDish", section: section, dish: name, youtube: safeUrl(link), replace: addReplace })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (out) {
+        if (out && out.exists) {
+          addReplace = true;
+          addMessage(out.error, "");
+          ad.save.textContent = "Replace video link";
+          return;
+        }
+        if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
+        store(PASS_KEY, pass);
+        rc.pass.value = pl.pass.value = pass;
+
+        // Show it on the page straight away; the next load reads it back from the sheet.
+        var key = section.toLowerCase();
+        var target = dishSections.filter(function (s) { return s.key === key; })[0];
+        if (!target) { target = { label: section, key: key, dishes: [] }; dishSections.push(target); }
+        var url = safeUrl(link);
+        var existing = target.dishes.filter(function (d) { return d.name.toLowerCase() === name.toLowerCase(); })[0];
+        if (existing) { existing.link = url; existing.videoId = youtubeId(url); }
+        else target.dishes.push({ name: name, link: url, videoId: youtubeId(url), customImage: null, voice: null });
+        addSection = target.label;
+        render();
+
+        addMessage(out.replaced
+          ? "Updated the video for " + name + " in " + target.label + "."
+          : "Added " + name + " to " + target.label + ".", "ok");
+        ad.record.dataset.dish = name;
+        ad.next.hidden = false;
+        ad.save.hidden = true;
+        addReplace = false;
+      })
+      .catch(function (err) {
+        var m = err && err.message && !/fetch|network|json|token/i.test(err.message)
+          ? err.message : "Could not reach Google. Check the internet connection and try again.";
+        addMessage(m, "error");
+      })
+      .then(function () {
+        ad.save.disabled = false;
+        if (!addReplace) ad.save.textContent = "Add dish";
+      });
+  }
+
+  function resetAddForm() {
+    ad.link.value = "";
+    ad.name.value = "";
+    ad.newSection.value = "";
+    if (addSection === "+") addSection = dishSections.length ? dishSections[0].label : "";
+    fillAddSections();
+    updatePreview();
+    addMessage("");
+    ad.next.hidden = true;
+    ad.save.hidden = false;
+    addReplace = false;
+    ad.save.textContent = "Add dish";
+  }
+
+  ad.link.addEventListener("input", updatePreview);
+  ad.name.addEventListener("input", function () { addReplace = false; ad.save.textContent = "Add dish"; });
+  ad.paste.addEventListener("click", function () {
+    if (!navigator.clipboard || !navigator.clipboard.readText) { ad.link.focus(); return; }
+    navigator.clipboard.readText().then(function (text) {
+      ad.link.value = String(text || "").trim();
+      updatePreview();
+      if (!ad.name.value) ad.name.focus();
+    }).catch(function () {
+      ad.link.focus();
+      ad.hint.className = "hint";
+      ad.hint.textContent = "Press and hold in the box, then choose Paste.";
+    });
+  });
+  ad.sections.addEventListener("click", function (e) {
+    var b = e.target.closest(".chip");
+    if (!b) return;
+    addSection = b.dataset.section;
+    addReplace = false;
+    ad.save.textContent = "Add dish";
+    fillAddSections();
+    if (addSection === "+") ad.newSection.focus();
+  });
+  ad.save.addEventListener("click", saveDish);
+  ad.another.addEventListener("click", function () { resetAddForm(); ad.link.focus(); });
+  // Straight on to recording a voice note for the dish just added.
+  ad.record.addEventListener("click", function () {
+    var dish = ad.record.dataset.dish;
+    setTimeout(function () { if (dish) rc.dish.value = dish; }, 0);
+  });
+
   function showView() {
     var tools = !!safeUrl(CONFIG.VOICE_UPLOAD_URL);
-    var view = tools && (location.hash === "#record" || location.hash === "#plan") ? location.hash.slice(1) : "";
+    var view = tools && /^#(record|plan|add)$/.test(location.hash) ? location.hash.slice(1) : "";
     if (view !== "record" && recording.media && recording.media.state === "recording") recording.media.stop();
     if (view) stopVoice();
     document.body.classList.toggle("tool-mode", !!view);
     rc.page.hidden = view !== "record";
     pl.page.hidden = view !== "plan";
+    ad.page.hidden = view !== "add";
     if (view === "plan") { pl.date.value = defaultPlanDate(); fillPlanner(); planMessage(""); }
+    if (view === "add") resetAddForm();
     window.scrollTo(0, 0);
   }
 
   if (safeUrl(CONFIG.VOICE_UPLOAD_URL)) {
     document.getElementById("recordWrap").hidden = false;
     document.getElementById("planWrap").hidden = false;
+    document.getElementById("addWrap").hidden = false;
     rc.pass.value = store(PASS_KEY) || "";
-    pl.pass.value = rc.pass.value;
+    pl.pass.value = ad.pass.value = rc.pass.value;
   }
 
   // A page left open overnight moves on to the new day's menu when it is looked at again.
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState !== "visible" || location.hash === "#record" || location.hash === "#plan") return;
+    if (document.visibilityState !== "visible" || /^#(record|plan|add)$/.test(location.hash)) return;
     if (renderedDay !== dayKey(new Date()) || Date.now() - lastLoad > 10 * 60 * 1000) load();
   });
   window.addEventListener("hashchange", showView);

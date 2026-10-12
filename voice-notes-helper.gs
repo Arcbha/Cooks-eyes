@@ -7,7 +7,8 @@
  * 1. The record page (recipe site address + "#record") sends recordings here.
  *    For that, this script is deployed as a web app; see README.md.
  *    The plan page (site address + "#plan") also saves the day's menu here,
- *    into the "Menu" tab of the sheet.
+ *    into the "Menu" tab of the sheet, and the add page (site address +
+ *    "#add") adds new dishes to the dish list.
  * 2. The "Recipe page > Link voice notes" menu in the sheet links sound files
  *    you upload to the folder yourself, matched by file name (e.g. "Poha.m4a").
  *
@@ -108,6 +109,10 @@ function doPost(e) {
       lock.waitLock(20000);
       return savePlan(req);
     }
+    if (req.action === "addDish") {
+      lock.waitLock(20000);
+      return addDish(req);
+    }
 
     var dish = String(req.dish || "").trim();
     if (!dish || !req.data) return reply({ ok: false, error: "Nothing to save." });
@@ -146,6 +151,66 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (e2) { /* lock was never taken */ }
   }
+}
+
+/* ---------------- add page ---------------- */
+
+// The add page sends: { passcode, action: "addDish", section, dish, youtube, replace }.
+// Adds a row to the dish list. If that dish is already in that section, it asks
+// first, and with replace: true swaps in the new video link instead.
+function addDish(req) {
+  var section = String(req.section || "").trim().slice(0, 60);
+  var dish = String(req.dish || "").trim().slice(0, 120);
+  var youtube = String(req.youtube || "").trim().slice(0, 500);
+  if (!section) return reply({ ok: false, error: "Pick a section." });
+  if (!dish) return reply({ ok: false, error: "Type the dish name." });
+  if (!/^https?:\/\//i.test(youtube)) return reply({ ok: false, error: "Paste the YouTube link." });
+
+  var sheet = dishSheet();
+  if (!sheet) return reply({ ok: false, error: 'No tab with a "Dish name" column was found.' });
+  var data = sheet.getDataRange().getValues();
+  var header = data[0];
+  var cols = listColumns(header);
+  if (cols.section < 0 || cols.link < 0) {
+    return reply({ ok: false, error: "The dish list needs Section and YouTube link headings in row 1." });
+  }
+
+  for (var r = 1; r < data.length; r++) {
+    if (clean(data[r][cols.name]) === clean(dish) && clean(data[r][cols.section]) === clean(section)) {
+      if (!req.replace) {
+        return reply({ ok: false, exists: true,
+          error: String(data[r][cols.name]).trim() + " is already in " + String(data[r][cols.section]).trim() +
+                 ". Tap Save again to replace its video link." });
+      }
+      sheet.getRange(r + 1, cols.link + 1).setValue(youtube);
+      if (cols.show >= 0) sheet.getRange(r + 1, cols.show + 1).setValue("Y");
+      SpreadsheetApp.flush();
+      return reply({ ok: true, dish: dish, section: section, replaced: true });
+    }
+  }
+
+  var row = header.map(function () { return ""; });
+  row[cols.section] = section;
+  row[cols.name] = dish;
+  row[cols.link] = youtube;
+  if (cols.show >= 0) row[cols.show] = "Y";
+  sheet.appendRow(row);
+  SpreadsheetApp.flush();
+  return reply({ ok: true, dish: dish, section: section });
+}
+
+// Columns of the dish list, found by their headings like the recipe page does.
+function listColumns(header) {
+  var cols = { section: -1, name: -1, link: -1, show: -1 };
+  header.forEach(function (h, i) {
+    h = String(h).toLowerCase();
+    if (/image|photo|picture|voice|audio|sound|instruction/.test(h)) return;
+    if (cols.show < 0 && /show|visible|active/.test(h)) cols.show = i;
+    else if (cols.section < 0 && /section|category|meal/.test(h)) cols.section = i;
+    else if (cols.link < 0 && /youtube|video|link|url/.test(h)) cols.link = i;
+    else if (cols.name < 0 && /dish|name|item|recipe/.test(h)) cols.name = i;
+  });
+  return cols;
 }
 
 /* ---------------- plan page ---------------- */

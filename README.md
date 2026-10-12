@@ -30,6 +30,24 @@ the sheet's sharing to stay at **Anyone with the link → Viewer**; if that is
 turned off, the page falls back to the published copy, which can lag by a few
 minutes and sometimes shows an older version.
 
+## Add a dish (no sheet needed)
+
+Open **https://arcbha.github.io/Cooks-eyes/#add** (or tap **Add a dish** at the
+bottom of the recipe page):
+
+1. **YouTube link:** tap **Paste** (or paste into the box). A preview shows the
+   video's picture, title and channel, so a wrong link is caught straight away.
+2. **Dish name:** in any language.
+3. **Section:** tap Breakfast, Lunch/Dinner, or **+ New section** to start one
+   (for example Snacks).
+4. Tap **Add dish**. It is added as a new row at the bottom of the sheet and
+   shows on the recipe page straight away.
+
+If the dish is already in that section, the page says so; tapping the button
+again replaces its video link (its voice note is kept). After adding, **Record
+voice instructions** goes straight to the record page with the new dish picked.
+Uses the same helper script and passcode as the record and plan pages.
+
 ## Today's menu
 
 Plan what the cook should make, and the page shows it to the cook on that day.
