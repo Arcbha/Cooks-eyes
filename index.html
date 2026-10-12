@@ -19,9 +19,9 @@ const CONFIG = {
   // Paste the link from Google Sheets > File > Share > Publish to web > CSV
   SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaRZ5A2EKnAYddc4YnMJwi2gyr-cFIIbRKQjuaKb13MsQ1S7rd-x7Iuon-PEvmuDPhIyZVoHV7QcDR/pub?output=csv",
 
-  // Link for editing the sheet (the normal link from the browser address bar
-  // while the sheet is open). Shown at the bottom of the page as "Edit dish list".
-  // Leave as "" to hide it.
+  // The sheet's normal link (from the browser address bar while it is open).
+  // The page reads the dish list and the day's menu through it, so they are always
+  // current. It is not shown on the page.
   SHEET_EDIT_URL: "https://docs.google.com/spreadsheets/d/1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ/edit?gid=0#gid=0",
 
   // Text shown at the top of the page
@@ -452,7 +452,6 @@ const CONFIG = {
   <footer>
     <div id="status"></div>
     <button class="reload" id="reload" type="button">Reload list</button>
-    <p class="edit-link" id="editWrap" hidden><a id="editLink" target="_blank" rel="noopener noreferrer">Edit dish list</a></p>
     <p class="edit-link" id="planWrap" hidden><a href="#plan">Plan the menu</a></p>
     <p class="edit-link" id="addWrap" hidden><a href="#add">Add a dish</a></p>
     <p class="edit-link" id="recordWrap" hidden><a href="#record">Record voice notes</a></p>
@@ -1781,12 +1780,6 @@ const CONFIG = {
   el.subtitle.textContent = CONFIG.PAGE_SUBTITLE || "";
   el.subtitle.hidden = !CONFIG.PAGE_SUBTITLE;
   el.reload.addEventListener("click", load);
-
-  var editUrl = safeUrl(CONFIG.SHEET_EDIT_URL);
-  if (editUrl) {
-    document.getElementById("editLink").href = editUrl;
-    document.getElementById("editWrap").hidden = false;
-  }
 
   // Exposed for testing only.
   window.__recipePage = {

@@ -1,3 +1,26 @@
+# Home Suite
+
+| Page | Address | For |
+|---|---|---|
+| Home Suite (launcher) | https://arcbha.github.io/Cooks-eyes/home/ | You |
+| Home To-dos | https://arcbha.github.io/Cooks-eyes/todos/ | You and family |
+| Mohna's Recipes | https://arcbha.github.io/Cooks-eyes/ | The cook |
+
+The recipe page stays at the main address (it is on the cook's phone) and has
+no link to the Home Suite. Add **Home Suite** to your own phone's home screen.
+
+**Home To-dos:** two lists, **Things to order** and **Home chores**. Type and tap
+**Add**; tap an item to tick it off (it moves to **Done**); **×** deletes it;
+**Clear done** empties the Done list; **Share this list on WhatsApp** sends the
+open items as one message (handy for the shop). Changes save straight away and
+show on other phones when the page is opened again. The lists are kept in a
+private **Home Suite data** spreadsheet in your Google Drive (created the first
+time the page is used), not in the recipe sheet. More lists: add a line to
+`LISTS` at the top of `todos/index.html`.
+
+**Adding another app later:** a new folder with its own `index.html`, plus one
+block in `APPS` at the top of `home/index.html`.
+
 # Cook's Recipe Page
 
 A one-page recipe list for the cook's phone. Big dish photos, grouped by

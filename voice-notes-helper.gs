@@ -9,6 +9,9 @@
  *    The plan page (site address + "#plan") also saves the day's menu here,
  *    into the "Menu" tab of the sheet, and the add page (site address +
  *    "#add") adds new dishes to the dish list.
+ *    The Home Suite's to-do page (site address + "todos/") keeps its lists in a
+ *    separate, private "Home Suite data" spreadsheet that this script creates
+ *    in your Drive the first time it is used.
  * 2. The "Recipe page > Link voice notes" menu in the sheet links sound files
  *    you upload to the folder yourself, matched by file name (e.g. "Poha.m4a").
  *
@@ -113,6 +116,10 @@ function doPost(e) {
       lock.waitLock(20000);
       return addDish(req);
     }
+    if (/^todo/.test(String(req.action || ""))) {
+      lock.waitLock(20000);
+      return todoAction(req);
+    }
 
     var dish = String(req.dish || "").trim();
     if (!dish || !req.data) return reply({ ok: false, error: "Nothing to save." });
@@ -213,6 +220,55 @@ function listColumns(header) {
   return cols;
 }
 
+/* ---------------- Home Suite: to-dos ---------------- */
+
+// To-dos live in their own spreadsheet, not the recipe sheet: the recipe sheet is
+// readable by anyone with its link (the cook's page needs that), this one is not.
+var SUITE_FILE_NAME = "Home Suite data";
+var TODO_SHEET_NAME = "Todos";
+var TODO_HEADERS = ["ID", "List", "Task", "Done", "Added", "Done at"];
+
+// The to-do page sends { passcode, action, ... } with action one of:
+//   "todos" (just read), "todoAdd" { id, list, task }, "todoSet" { id, done },
+//   "todoDelete" { id }, "todoClearDone" { list }.
+// Every answer carries the whole list, so the page always ends up in step.
+function todoAction(req) {
+  var sheet = suiteSheet(TODO_SHEET_NAME, TODO_HEADERS);
+  var action = req.action;
+
+  if (action === "todoAdd") {
+    var task = String(req.task || "").trim().slice(0, 200);
+    var list = String(req.list || "").trim().slice(0, 40);
+    if (!task) return reply({ ok: false, error: "Type something to add." });
+    if (!list) return reply({ ok: false, error: "Pick a list." });
+    // The page makes the id, so an item can be ticked before this answer arrives.
+    var id = /^[\w-]{6,40}$/.test(String(req.id || "")) ? String(req.id) : Utilities.getUuid().slice(0, 8);
+    if (!todoRow(sheet, id)) sheet.appendRow([id, list, task, "", new Date(), ""]);
+  } else if (action === "todoSet" || action === "todoDelete") {
+    var row = todoRow(sheet, req.id);
+    if (row) {
+      if (action === "todoDelete") sheet.deleteRow(row);
+      else {
+        sheet.getRange(row, 4).setValue(req.done ? "Y" : "");          // Done
+        sheet.getRange(row, 6).setValue(req.done ? new Date() : "");   // Done at
+      }
+    }
+  } else if (action === "todoClearDone") {
+    var last = sheet.getLastRow();
+    if (last > 1) {
+      var vals = sheet.getRange(2, 1, last - 1, 4).getValues();
+      for (var i = vals.length - 1; i >= 0; i--) {
+        var inList = !req.list || String(vals[i][1]) === String(req.list);
+        if (inList && isDone(vals[i][3])) sheet.deleteRow(i + 2);
+      }
+    }
+  } else if (action !== "todos") {
+    return reply({ ok: false, error: "Unknown request." });
+  }
+  SpreadsheetApp.flush();
+  return reply({ ok: true, items: readTodos(sheet) });
+}
+
 /* ---------------- plan page ---------------- */
 
 // The plan page sends: { passcode, action: "plan", date: "2026-10-10",
@@ -296,6 +352,52 @@ function inVoiceFolder(file) {
     if (parents.next().getId() === folderId) return true;
   }
   return false;
+}
+
+function todoRow(sheet, id) {
+  id = String(id || "");
+  var last = sheet.getLastRow();
+  if (!id || last < 2) return 0;
+  var ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === id) return i + 2;
+  return 0;
+}
+
+function readTodos(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, 6).getValues()
+    .filter(function (v) { return String(v[0]) && String(v[2]).trim(); })
+    .map(function (v) {
+      return {
+        id: String(v[0]), list: String(v[1]), task: String(v[2]), done: isDone(v[3]),
+        added: v[4] instanceof Date ? v[4].getTime() : 0,
+        doneAt: v[5] instanceof Date ? v[5].getTime() : 0
+      };
+    });
+}
+
+function isDone(v) { return /^(y|yes|done|true|1|x)$/i.test(String(v).trim()) || v === true; }
+
+// A tab in the private Home Suite spreadsheet, created (with headings) when first needed.
+function suiteSheet(name, headers) {
+  var props = PropertiesService.getScriptProperties();
+  var ss = null, id = props.getProperty("SUITE_SHEET_ID");
+  if (id) { try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } }
+  var sheet;
+  if (!ss) {
+    ss = SpreadsheetApp.create(SUITE_FILE_NAME);
+    props.setProperty("SUITE_SHEET_ID", ss.getId());
+    sheet = ss.getSheets()[0];
+    sheet.setName(name);
+  } else {
+    sheet = ss.getSheetByName(name);
+    if (sheet) return sheet;
+    sheet = ss.insertSheet(name);
+  }
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+  sheet.setFrozenRows(1);
+  return sheet;
 }
 
 /* ---------------- shared bits ---------------- */

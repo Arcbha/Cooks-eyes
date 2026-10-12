@@ -1,6 +1,24 @@
 # Project rules
 
-- This is a recipe page for a household cook. It is one file, `index.html`,
+This repo is the owner's **Home Suite**, published on GitHub Pages:
+
+- `index.html` (site root) is **Mohna's Recipes**, the cook's page. Its address
+  is on the cook's phone, so it must stay at the root, and it must never link to
+  the Home Suite or the other apps (the cook does not need to see them).
+- `home/index.html` is the Home Suite launcher (one tile per app, listed in its
+  `CONFIG.APPS`), for the owner only.
+- `todos/index.html` is **Home To-dos** (Things to order, Home chores).
+- Each app is its own single file with all its HTML, CSS and JavaScript. A new
+  app is a new folder with an `index.html`, plus one tile in `home/index.html`.
+- All apps save through the one helper script (`voice-notes-helper.gs`, same web
+  app address and passcode). The recipe data is in the recipe sheet, which is
+  readable by link; everything else (to-dos) is in a private "Home Suite data"
+  spreadsheet the script creates. The passcode is remembered per phone under the
+  same browser storage key on every page.
+
+## Mohna's Recipes
+
+- The recipe page is for a household cook. It is one file, `index.html`,
   with all HTML, CSS and JavaScript inside it.
 - The dish list comes from a published Google Sheet (CSV). The link is
   `CONFIG.SHEET_CSV_URL` at the top of `index.html`. Columns: Section,
@@ -26,4 +44,9 @@
   it through the same helper script, one group per meal in `CONFIG.MEALS`
   (Breakfast, Lunch, Dinner). The cook's page opens on "Today" when
   that day is planned and never opens on "Tomorrow" by itself.
+
+## Everywhere
+
+- After any change, also open `home/` and `todos/` at 390px width and confirm
+  they load, their links work, and nothing scrolls sideways.
 - Explain what you changed in plain language, without code terms.

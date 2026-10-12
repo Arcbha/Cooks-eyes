@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FBF5EA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Home Suite">
+<title>Home Suite</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232A1B10'/%3E%3Cpath d='M14 31L32 15l18 16v17a2 2 0 0 1-2 2H38V38H26v12H16a2 2 0 0 1-2-2z' fill='%23FBF5EA'/%3E%3C/svg%3E">
+
+<script>
+/* ============================================================
+   SETTINGS: the apps on the Home page. Add one by adding a block below.
+   ============================================================ */
+const CONFIG = {
+  TITLE: "Home Suite",
+
+  // The helper web app (voice-notes-helper.gs) and the recipe sheet's normal link.
+  HELPER_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
+  RECIPE_SHEET_URL: "https://docs.google.com/spreadsheets/d/1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ/edit",
+
+  APPS: [
+    {
+      id: "todos",
+      name: "Home To-dos",
+      icon: "✅",
+      color: "green",
+      href: "../todos/",
+      blurb: "Things to order and home chores"
+    },
+    {
+      id: "recipes",
+      name: "Mohna's Recipes",
+      icon: "🍳",
+      color: "orange",
+      href: "../",
+      blurb: "The cook's recipe page",
+      actions: [
+        { label: "Plan menu", href: "../#plan" },
+        { label: "Add dish", href: "../#add" },
+        { label: "Voice note", href: "../#record" }
+      ]
+    }
+  ]
+};
+</script>
+
+<style>
+  :root {
+    --bg: #FBF5EA;
+    --card: #FFFFFF;
+    --ink: #2A1B10;
+    --muted: #7B6857;
+    --line: #E8DCC8;
+    --radius: 22px;
+
+    --fs-title: 2rem;
+    --fs-heading: 1.375rem;
+    --fs-body: 1.125rem;
+    --fs-small: 0.9rem;
+    --fs-label: 0.8rem;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+                 "Noto Sans Devanagari", "Noto Sans Kannada", sans-serif;
+    line-height: 1.35; -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 16px 40px; }
+  [hidden] { display: none !important; }
+
+  header { padding: 22px 0 18px; }
+  .eyebrow {
+    display: block; font-size: var(--fs-label); font-weight: 800; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  h1 { margin: 4px 0 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+
+  .apps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 700px) { .apps { grid-template-columns: 1fr 1fr; } }
+
+  .app {
+    --tint: #F5EFE6; --chip: #EADFCB; --ink-2: var(--ink);
+    position: relative; display: flex; flex-direction: column;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: 0 2px 10px rgba(42, 27, 16, 0.06); overflow: hidden;
+  }
+  .app.green  { --tint: #EDF6EA; --chip: #CFEAC6; --ink-2: #2C6327; }
+  .app.orange { --tint: #FFF1E6; --chip: #FFD9BF; --ink-2: #9A3412; }
+  .app.purple { --tint: #EEEDF9; --chip: #DAD6F6; --ink-2: #3B3586; }
+
+  .open {
+    display: flex; align-items: center; gap: 14px; padding: 16px; text-decoration: none; color: inherit;
+    background: var(--tint);
+  }
+  .open:active { filter: brightness(0.97); }
+  .icon {
+    flex: none; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    background: var(--chip); font-size: 1.8rem; line-height: 1;
+  }
+  .name { margin: 0; font-size: var(--fs-heading); font-weight: 800; color: var(--ink-2); line-height: 1.2; }
+  .blurb { margin-top: 2px; font-size: var(--fs-small); color: var(--muted); }
+  .chev { margin-left: auto; font-size: 1.6rem; color: var(--ink-2); opacity: 0.6; }
+
+  .summary { padding: 14px 16px 16px; font-size: var(--fs-body); }
+  .summary .label { display: block; margin-bottom: 4px; font-size: var(--fs-label); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .stats { display: flex; flex-wrap: wrap; gap: 8px; }
+  .stat {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+    background: var(--tint); color: var(--ink-2); font-size: var(--fs-small); font-weight: 700;
+  }
+  .stat b { font-size: var(--fs-body); }
+  .quiet { color: var(--muted); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 16px; }
+  .action {
+    flex: 1 1 0; min-width: 96px; display: flex; align-items: center; justify-content: center;
+    min-height: 46px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 12px;
+    color: var(--ink); font-size: var(--fs-small); font-weight: 700; text-decoration: none; background: var(--card);
+  }
+  .action:active { background: var(--tint); }
+
+  .soon {
+    display: flex; align-items: center; justify-content: center; min-height: 96px; padding: 16px;
+    border: 2px dashed var(--line); border-radius: var(--radius); color: var(--muted); font-size: var(--fs-small); text-align: center;
+  }
+  a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow" id="greeting"></span>
+    <h1 id="title">Home Suite</h1>
+  </header>
+  <ul class="apps" id="apps"></ul>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and To-dos
+  var TODO_CACHE_KEY = "home-todos-cache-v1"; // the To-dos page keeps its last list here
+
+  function store(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function pad2(n) { return ("0" + n).slice(-2); }
+  function dayKey(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+
+  var now = new Date();
+  var hour = now.getHours();
+  document.getElementById("greeting").textContent =
+    (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") + " · " +
+    now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  document.getElementById("title").textContent = CONFIG.TITLE;
+  document.title = CONFIG.TITLE;
+
+  /* ---------- tiles ---------- */
+
+  var summaries = {};
+  var appsEl = document.getElementById("apps");
+  CONFIG.APPS.forEach(function (app) {
+    var li = document.createElement("li");
+    li.className = "app " + (app.color || "");
+
+    var open = document.createElement("a");
+    open.className = "open";
+    open.href = app.href;
+    var icon = document.createElement("span");
+    icon.className = "icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = app.icon;
+    var text = document.createElement("div");
+    var name = document.createElement("h2");
+    name.className = "name";
+    name.textContent = app.name;
+    var blurb = document.createElement("div");
+    blurb.className = "blurb";
+    blurb.textContent = app.blurb || "";
+    text.appendChild(name); text.appendChild(blurb);
+    var chev = document.createElement("span");
+    chev.className = "chev";
+    chev.setAttribute("aria-hidden", "true");
+    chev.textContent = "›";
+    open.appendChild(icon); open.appendChild(text); open.appendChild(chev);
+    li.appendChild(open);
+
+    var summary = document.createElement("div");
+    summary.className = "summary";
+    summary.hidden = true;
+    li.appendChild(summary);
+    summaries[app.id] = summary;
+
+    if (app.actions && app.actions.length) {
+      var actions = document.createElement("div");
+      actions.className = "actions";
+      app.actions.forEach(function (a) {
+        var link = document.createElement("a");
+        link.className = "action";
+        link.href = a.href;
+        link.textContent = a.label;
+        actions.appendChild(link);
+      });
+      li.appendChild(actions);
+    }
+    appsEl.appendChild(li);
+  });
+
+  var soon = document.createElement("li");
+  soon.className = "soon";
+  soon.textContent = "More home apps will appear here.";
+  appsEl.appendChild(soon);
+
+  function fill(id, label, build) {
+    var box = summaries[id];
+    if (!box) return;
+    box.textContent = "";
+    var l = document.createElement("span");
+    l.className = "label";
+    l.textContent = label;
+    box.appendChild(l);
+    build(box);
+    box.hidden = false;
+  }
+
+  /* ---------- live summaries ---------- */
+
+  // To-dos: open items per list (last saved copy first, then fresh from Google).
+  function showTodos(items) {
+    var counts = {}, order = [];
+    (items || []).forEach(function (it) {
+      if (it.done) return;
+      if (!counts[it.list]) { counts[it.list] = 0; order.push(it.list); }
+      counts[it.list]++;
+    });
+    fill("todos", "Open", function (box) {
+      if (!order.length) {
+        var q = document.createElement("span");
+        q.className = "quiet";
+        q.textContent = "Nothing open. All done!";
+        box.appendChild(q);
+        return;
+      }
+      var stats = document.createElement("div");
+      stats.className = "stats";
+      order.forEach(function (list) {
+        var s = document.createElement("span");
+        s.className = "stat";
+        var b = document.createElement("b");
+        b.textContent = counts[list];
+        s.appendChild(b);
+        s.appendChild(document.createTextNode(list));
+        stats.appendChild(s);
+      });
+      box.appendChild(stats);
+    });
+  }
+  try { var cached = JSON.parse(store(TODO_CACHE_KEY) || "null"); if (cached) showTodos(cached); } catch (e) { /* ignore */ }
+  if (store(PASS_KEY)) {
+    fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ passcode: store(PASS_KEY), action: "todos" }) })
+      .then(function (res) { return res.json(); })
+      .then(function (out) { if (out && out.ok) showTodos(out.items); })
+      .catch(function () { /* the cached numbers stay */ });
+  }
+
+  // Recipes: today's menu from the recipe sheet's Menu tab.
+  var sheetId = (CONFIG.RECIPE_SHEET_URL.match(/\/spreadsheets\/d\/([\w-]+)/) || [])[1];
+  if (sheetId) {
+    fetch("https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:csv&headers=1&sheet=Menu&t=" + Date.now(),
+          { cache: "no-store", credentials: "omit" })
+      .then(function (res) { return res.ok ? res.text() : ""; })
+      .then(function (text) {
+        var rows = parseCSV(text);
+        var head = (rows[0] || []).map(function (h) { return String(h).toLowerCase(); });
+        var di = head.findIndex(function (h) { return /date|day/.test(h); });
+        var ni = head.findIndex(function (h) { return /dish|name|item/.test(h); });
+        var mi = head.findIndex(function (h) { return /meal|section|time/.test(h); });
+        var today = dayKey(new Date());
+        var meals = {}, order = [];
+        if (di >= 0 && ni >= 0) {
+          rows.slice(1).forEach(function (r) {
+            if (planDate(r[di]) !== today || !String(r[ni] || "").trim()) return;
+            var meal = mi >= 0 && String(r[mi] || "").trim() || "Menu";
+            if (!meals[meal]) { meals[meal] = []; order.push(meal); }
+            meals[meal].push(String(r[ni]).trim());
+          });
+        }
+        fill("recipes", "Today's menu", function (box) {
+          if (!order.length) {
+            var q = document.createElement("span");
+            q.className = "quiet";
+            q.textContent = "Nothing planned for today yet.";
+            box.appendChild(q);
+            return;
+          }
+          order.forEach(function (meal) {
+            var line = document.createElement("div");
+            var b = document.createElement("b");
+            b.textContent = meal + ": ";
+            line.appendChild(b);
+            line.appendChild(document.createTextNode(meals[meal].join(", ")));
+            box.appendChild(line);
+          });
+        });
+      })
+      .catch(function () { /* no summary */ });
+  }
+
+  function planDate(raw) {
+    var s = String(raw || "").trim();
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return m[1] + "-" + pad2(m[2]) + "-" + pad2(m[3]);
+    m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+    return m ? m[3] + "-" + pad2(m[2]) + "-" + pad2(m[1]) : "";
+  }
+
+  function parseCSV(text) {
+    var rows = [], row = [], cell = "", q = false;
+    text = String(text || "").replace(/^﻿/, "");
+    if (/^\s*<(!doctype|html)/i.test(text)) return [];
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(cell); cell = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else cell += c;
+    }
+    if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+})();
+</script>
+</body>
+</html>

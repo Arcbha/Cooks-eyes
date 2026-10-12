@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#FBF5EA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Home To-dos">
+<title>Home To-dos</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232F6B2A'/%3E%3Cpath d='M18 33l9 9 19-20' fill='none' stroke='%23FBF5EA' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+<script>
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+const CONFIG = {
+  // The same helper web app the recipe page uses (voice-notes-helper.gs).
+  HELPER_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
+
+  // The lists, in order. Add another line to add a list.
+  LISTS: [
+    { name: "Things to order", icon: "🛒", placeholder: "Add something to order" },
+    { name: "Home chores",     icon: "🧹", placeholder: "Add a chore" }
+  ]
+};
+</script>
+
+<style>
+  :root {
+    --bg: #FBF5EA;
+    --card: #FFFFFF;
+    --ink: #2A1B10;
+    --muted: #7B6857;
+    --line: #E8DCC8;
+    --accent: #2F6B2A;
+    --accent-soft: #EDF6EA;
+    --danger: #B42318;
+    --radius: 20px;
+
+    /* Same text-size scale as the recipe page */
+    --fs-title: 2rem;
+    --fs-heading: 1.375rem;
+    --fs-body: 1.125rem;
+    --fs-small: 0.9rem;
+    --fs-label: 0.8rem;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+                 "Noto Sans Devanagari", "Noto Sans Kannada", sans-serif;
+    line-height: 1.35; -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; }
+  button { font: inherit; }
+  [hidden] { display: none !important; }
+
+  header { padding: 14px 0 6px; }
+  .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+  .home-link { color: var(--muted); font-size: var(--fs-small); font-weight: 600; text-decoration: none; }
+  .sync { font-size: var(--fs-label); font-weight: 700; color: var(--muted); }
+  .sync.error { color: var(--danger); }
+  h1 { margin: 6px 0 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+
+  /* List switcher */
+  .bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 12px; border-bottom: 1px solid var(--line); }
+  .lists { display: flex; gap: 10px; }
+  .list-tab {
+    flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 54px; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 14px;
+    background: var(--card); color: var(--ink); font-size: var(--fs-body); font-weight: 700; line-height: 1.15; cursor: pointer;
+  }
+  .list-tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  .list-tab .n {
+    min-width: 26px; padding: 1px 7px; border-radius: 999px; font-size: var(--fs-label);
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .list-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, 0.18); color: var(--bg); }
+
+  /* Add box */
+  .add { display: flex; gap: 10px; margin-top: 12px; }
+  .add input {
+    flex: 1 1 auto; min-width: 0; min-height: 54px; padding: 10px 14px;
+    border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink);
+    font: inherit; font-size: var(--fs-body);
+  }
+  .add input:focus { outline: none; border-color: var(--accent); }
+  .add button {
+    flex: none; min-width: 84px; min-height: 54px; border: 0; border-radius: 14px;
+    background: var(--accent); color: #FFFFFF; font-size: var(--fs-body); font-weight: 800; cursor: pointer;
+  }
+
+  /* Items */
+  main { padding: 14px 0 40px; }
+  .items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .item {
+    display: flex; align-items: center; gap: 6px; min-height: 58px; padding: 4px 6px 4px 4px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  }
+  .tick {
+    flex: 1 1 auto; display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 4px 8px;
+    border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-radius: 12px;
+  }
+  .box {
+    flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #BFAE97;
+    display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 1rem; font-weight: 900;
+  }
+  .text { font-size: var(--fs-body); overflow-wrap: anywhere; }
+  .item.done .box { background: var(--accent); border-color: var(--accent); }
+  .item.done .text { color: var(--muted); text-decoration: line-through; }
+  .del {
+    flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: none;
+    color: #B7A58E; font-size: 1.4rem; line-height: 1; cursor: pointer;
+  }
+  .del:active { background: #FDE4DC; color: var(--danger); }
+  .tick:focus-visible, .del:focus-visible, .list-tab:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .empty {
+    padding: 28px 20px; text-align: center; border: 2px dashed var(--line); border-radius: var(--radius);
+    color: var(--muted); font-size: var(--fs-body);
+  }
+  .empty strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: var(--fs-heading); }
+
+  .done-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 0 10px; }
+  .done-toggle {
+    border: 0; background: none; padding: 6px 0; color: var(--muted); font-size: var(--fs-small); font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+  }
+  .clear {
+    border: 1px solid var(--line); background: var(--card); border-radius: 12px; min-height: 40px; padding: 0 14px;
+    color: var(--muted); font-size: var(--fs-small); font-weight: 700; cursor: pointer;
+  }
+  .share {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; margin-top: 16px;
+    border: 2px solid #25D366; border-radius: 14px; background: var(--card); color: #128C4B;
+    font-size: var(--fs-body); font-weight: 800; text-decoration: none;
+  }
+
+  /* Passcode screen */
+  .gate { margin-top: 24px; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+  .gate h2 { margin: 0 0 4px; font-size: var(--fs-heading); }
+  .gate p { margin: 0 0 14px; color: var(--muted); }
+  .gate input {
+    display: block; width: 100%; min-height: 54px; padding: 10px 14px; margin-bottom: 12px;
+    border: 2px solid var(--line); border-radius: 14px; font: inherit; font-size: var(--fs-body);
+  }
+  .gate button {
+    width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--accent); color: #FFFFFF;
+    font-size: var(--fs-body); font-weight: 800; cursor: pointer;
+  }
+  .gate .msg { margin: 12px 0 0; color: var(--danger); font-weight: 600; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <header>
+    <div class="topline">
+      <a class="home-link" href="../home/">&larr; Home</a>
+      <span class="sync" id="sync" aria-live="polite"></span>
+    </div>
+    <h1>Home To-dos</h1>
+  </header>
+</div>
+
+<div class="bar" id="bar" hidden>
+  <div class="wrap">
+    <div class="lists" id="lists" role="tablist"></div>
+    <form class="add" id="addForm" autocomplete="off">
+      <input id="addInput" type="text" enterkeyhint="done" maxlength="200">
+      <button type="submit">Add</button>
+    </form>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="gate" id="gate" hidden>
+    <h2>Enter the passcode</h2>
+    <p>The same passcode as the recipe tools. This phone remembers it.</p>
+    <form id="gateForm">
+      <input id="gatePass" type="password" autocomplete="current-password">
+      <button type="submit" id="gateBtn">Open</button>
+    </form>
+    <p class="msg" id="gateMsg" hidden></p>
+  </section>
+
+  <main id="main" hidden>
+    <ul class="items" id="pending"></ul>
+    <div id="emptyBox"></div>
+    <a class="share" id="share" target="_blank" rel="noopener noreferrer" hidden>Share this list on WhatsApp</a>
+    <div class="done-head" id="doneHead" hidden>
+      <button class="done-toggle" id="doneToggle" type="button"></button>
+      <button class="clear" id="clearDone" type="button">Clear done</button>
+    </div>
+    <ul class="items" id="doneList" hidden></ul>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and Home
+  var CACHE_KEY = "home-todos-cache-v1";
+  var LIST_KEY = "home-todos-list-v1";
+
+  var el = {
+    sync: document.getElementById("sync"),
+    bar: document.getElementById("bar"),
+    lists: document.getElementById("lists"),
+    addForm: document.getElementById("addForm"),
+    addInput: document.getElementById("addInput"),
+    gate: document.getElementById("gate"),
+    gateForm: document.getElementById("gateForm"),
+    gatePass: document.getElementById("gatePass"),
+    gateBtn: document.getElementById("gateBtn"),
+    gateMsg: document.getElementById("gateMsg"),
+    main: document.getElementById("main"),
+    pending: document.getElementById("pending"),
+    emptyBox: document.getElementById("emptyBox"),
+    share: document.getElementById("share"),
+    doneHead: document.getElementById("doneHead"),
+    doneToggle: document.getElementById("doneToggle"),
+    clearDone: document.getElementById("clearDone"),
+    doneList: document.getElementById("doneList")
+  };
+
+  var items = [];          // [{ id, list, task, done, added, doneAt }]
+  var currentList = null;
+  var showDone = false;
+  var queue = Promise.resolve();
+  var inFlight = 0;
+  var lastLoad = 0;
+
+  function store(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch (e) { /* private mode or blocked storage: carry on without it */ }
+    return null;
+  }
+
+  function setSync(text, isError) {
+    el.sync.textContent = text || "";
+    el.sync.classList.toggle("error", !!isError);
+  }
+
+  function listNames() {
+    var names = CONFIG.LISTS.map(function (l) { return l.name; });
+    items.forEach(function (it) { if (it.list && names.indexOf(it.list) < 0) names.push(it.list); });
+    return names;
+  }
+  function listInfo(name) {
+    return CONFIG.LISTS.filter(function (l) { return l.name === name; })[0] ||
+      { name: name, icon: "📝", placeholder: "Add to " + name };
+  }
+
+  /* ---------- talking to the helper ---------- */
+
+  function call(body) {
+    body.passcode = store(PASS_KEY) || "";
+    return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) })
+      .then(function (res) { return res.json(); })
+      .then(function (out) {
+        if (!out || !out.ok) {
+          var err = new Error((out && out.error) || "Could not save.");
+          err.wrongPass = /passcode/i.test(err.message);
+          throw err;
+        }
+        return out;
+      });
+  }
+
+  // Changes go one at a time, in order. The screen changes straight away; the
+  // answer from Google (the whole list) is only shown once nothing else is waiting.
+  function send(body) {
+    inFlight++;
+    setSync("Saving...");
+    queue = queue.then(function () { return call(body); }).then(function (out) {
+      inFlight--;
+      if (!inFlight) { setItems(out.items); setSync("Saved"); }
+    }, function (err) {
+      inFlight--;
+      if (err.wrongPass) { lock(err.message); return; }
+      setSync("Not saved. Check the internet.", true);
+      if (!inFlight) refresh();
+    });
+  }
+
+  function refresh() {
+    lastLoad = Date.now();
+    if (!inFlight) setSync("Updating...");
+    return call({ action: "todos" }).then(function (out) {
+      if (!inFlight) { setItems(out.items); setSync(""); }
+      return true;
+    }).catch(function (err) {
+      if (err.wrongPass) { lock(err.message); return false; }
+      setSync(items.length ? "Offline. Showing the last saved list." : "Could not load. Check the internet.", true);
+      return false;
+    });
+  }
+
+  function setItems(list) {
+    items = list || [];
+    store(CACHE_KEY, JSON.stringify(items));
+    render();
+  }
+
+  /* ---------- drawing ---------- */
+
+  function render() {
+    var names = listNames();
+    if (names.indexOf(currentList) < 0) currentList = names[0];
+
+    el.lists.textContent = "";
+    names.forEach(function (name) {
+      var info = listInfo(name);
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "list-tab";
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", name === currentList ? "true" : "false");
+      var icon = document.createElement("span");
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = info.icon;
+      var label = document.createElement("span");
+      label.textContent = name;
+      var n = document.createElement("span");
+      n.className = "n";
+      n.textContent = items.filter(function (it) { return it.list === name && !it.done; }).length;
+      b.appendChild(icon); b.appendChild(label); b.appendChild(n);
+      b.addEventListener("click", function () {
+        currentList = name;
+        store(LIST_KEY, name);
+        render();
+      });
+      el.lists.appendChild(b);
+    });
+    el.addInput.placeholder = listInfo(currentList).placeholder;
+
+    var mine = items.filter(function (it) { return it.list === currentList; });
+    var open = mine.filter(function (it) { return !it.done; })
+      .sort(function (a, b) { return (b.added || 0) - (a.added || 0); });
+    var done = mine.filter(function (it) { return it.done; })
+      .sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
+
+    el.pending.textContent = "";
+    open.forEach(function (it) { el.pending.appendChild(row(it)); });
+
+    el.emptyBox.textContent = "";
+    if (!open.length) {
+      var e = document.createElement("div");
+      e.className = "empty";
+      var strong = document.createElement("strong");
+      strong.textContent = done.length ? "All done" : "Nothing here yet";
+      e.appendChild(strong);
+      e.appendChild(document.createTextNode("Type in the box above and tap Add."));
+      el.emptyBox.appendChild(e);
+    }
+
+    // Send the open items to someone (for example the shop) in one message.
+    el.share.hidden = !open.length;
+    if (open.length) {
+      var text = listInfo(currentList).name + ":\n" + open.map(function (it) { return "• " + it.task; }).join("\n");
+      el.share.href = "https://wa.me/?text=" + encodeURIComponent(text);
+    }
+
+    el.doneHead.hidden = !done.length;
+    el.doneToggle.textContent = (showDone ? "▾ " : "▸ ") + "Done (" + done.length + ")";
+    el.doneList.hidden = !showDone || !done.length;
+    el.doneList.textContent = "";
+    done.forEach(function (it) { el.doneList.appendChild(row(it)); });
+  }
+
+  function row(it) {
+    var li = document.createElement("li");
+    li.className = "item" + (it.done ? " done" : "");
+    var tick = document.createElement("button");
+    tick.type = "button";
+    tick.className = "tick";
+    tick.setAttribute("aria-pressed", it.done ? "true" : "false");
+    var box = document.createElement("span");
+    box.className = "box";
+    box.setAttribute("aria-hidden", "true");
+    box.textContent = it.done ? "✓" : "";
+    var text = document.createElement("span");
+    text.className = "text";
+    text.textContent = it.task;
+    tick.appendChild(box); tick.appendChild(text);
+    tick.addEventListener("click", function () {
+      it.done = !it.done;
+      it.doneAt = it.done ? Date.now() : 0;
+      store(CACHE_KEY, JSON.stringify(items));
+      render();
+      send({ action: "todoSet", id: it.id, done: it.done });
+    });
+    var del = document.createElement("button");
+    del.type = "button";
+    del.className = "del";
+    del.setAttribute("aria-label", "Delete " + it.task);
+    del.textContent = "×";
+    del.addEventListener("click", function () {
+      items = items.filter(function (x) { return x !== it; });
+      store(CACHE_KEY, JSON.stringify(items));
+      render();
+      send({ action: "todoDelete", id: it.id });
+    });
+    li.appendChild(tick); li.appendChild(del);
+    return li;
+  }
+
+  /* ---------- passcode ---------- */
+
+  function lock(message) {
+    store(PASS_KEY, null);
+    el.bar.hidden = true;
+    el.main.hidden = true;
+    el.gate.hidden = false;
+    el.gateMsg.textContent = message || "";
+    el.gateMsg.hidden = !message;
+    setSync("");
+    el.gatePass.focus();
+  }
+
+  function unlock() {
+    el.gate.hidden = true;
+    el.bar.hidden = false;
+    el.main.hidden = false;
+    render();
+  }
+
+  el.gateForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var pass = el.gatePass.value.trim();
+    if (!pass) return;
+    store(PASS_KEY, pass);
+    el.gateBtn.disabled = true;
+    el.gateBtn.textContent = "Checking...";
+    el.gateMsg.hidden = true;
+    refresh().then(function (ok) {
+      el.gateBtn.disabled = false;
+      el.gateBtn.textContent = "Open";
+      if (ok) unlock();
+      else if (!el.gate.hidden && el.gateMsg.hidden) {
+        el.gateMsg.textContent = "Could not reach Google. Check the internet and try again.";
+        el.gateMsg.hidden = false;
+      }
+    });
+  });
+
+  /* ---------- adding, clearing ---------- */
+
+  el.addForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var task = el.addInput.value.trim();
+    if (!task) { el.addInput.focus(); return; }
+    var it = {
+      id: "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      list: currentList, task: task, done: false, added: Date.now(), doneAt: 0
+    };
+    items.push(it);
+    el.addInput.value = "";
+    el.addInput.focus();
+    store(CACHE_KEY, JSON.stringify(items));
+    render();
+    send({ action: "todoAdd", id: it.id, list: it.list, task: it.task });
+  });
+
+  el.doneToggle.addEventListener("click", function () { showDone = !showDone; render(); });
+  el.clearDone.addEventListener("click", function () {
+    var list = currentList;
+    items = items.filter(function (it) { return !(it.list === list && it.done); });
+    store(CACHE_KEY, JSON.stringify(items));
+    render();
+    send({ action: "todoClearDone", list: list });
+  });
+
+  // Coming back to the page picks up changes made on another phone.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && !el.main.hidden && !inFlight && Date.now() - lastLoad > 30000) refresh();
+  });
+
+  /* ---------- start ---------- */
+
+  try { items = JSON.parse(store(CACHE_KEY) || "[]") || []; } catch (e) { items = []; }
+  currentList = store(LIST_KEY);
+
+  if (!store(PASS_KEY)) {
+    lock("");
+  } else {
+    unlock();
+    refresh();
+  }
+})();
+</script>
+</body>
+</html>
