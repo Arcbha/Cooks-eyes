@@ -108,15 +108,22 @@ session.
   following the phone's light/dark setting:
   Ink (background) #F2F2F7 / #000000, Graphite (cards) #FFFFFF / #1C1C1E,
   Slate (raised) #FFFFFF / #2C2C2E, Snow (text) #1C1C1E / #F5F5F7,
-  Ash (secondary text) #6E6E73 / #98989D, Gold (recipes, filled buttons and
-  tabs; Radix amber) fill #FFC53D with #21201C text, gold text #AB6400 / #FFCA16,
+  Ash (secondary text) #6E6E73 / #98989D, Marigold (recipes, filled buttons and
+  tabs; the owner's chosen yellow-orange) gradient #E9C35A > #E0A346 > #D47639
+  with #21201C text, marigold text #A5541B / #ECB95A,
   Sky #007AFF / #0A84FF (to-dos, Home, links), Sun #B25000 / #FFD60A
   (breakfast), Leaf #248A3D / #30D158 (lunch, WhatsApp), Indigo #3634A3 /
   #5E5CE6 (dinner), Ember (record, delete, errors; Radix red) fill #E5484D, text #CE2C31 / #FF9592. Each app takes
   one accent; meals keep their colour everywhere.
-- The cat: every page has the same small animated cat in the title row (one
-  SVG, `catLife` timer): it walks across, licks a paw, purrs, walks back and
-  naps, using only transforms and opacity, and stands still for reduced motion.
+- The cat is the owner's own cat: ginger tabby with a white chest, muzzle and
+  paws, pink nose and ears, yellow collar (#E9C35A) and a red-and-white Poke Ball
+  bell (Ginger #E0954A, stripes #B9652C). Every page has the same animated cat in
+  the title row (one SVG, `catLife` timer): sits, walks across, licks a paw,
+  purrs, walks back and naps, using only transforms and opacity; it sits still
+  for reduced motion.
+- Font: SF Pro (owner has Apple's permission), shipped as one small variable
+  web font, `fonts/sf-pro.woff2` (Latin only, weights 400-800), the one shared
+  file outside the pages. Other scripts such as Hindi fall back to system fonts.
 - After any change, also open `home/` and `todos/` at 390px width and confirm
   they load, their links work, and nothing scrolls sideways.
 - Explain what you changed in plain language, without code terms.
