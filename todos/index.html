@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Home To-dos">
 <title>Home To-dos</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232F6B2A'/%3E%3Cpath d='M18 33l9 9 19-20' fill='none' stroke='%23FBF5EA' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
 <script>
@@ -341,8 +343,16 @@ const CONFIG = {
      only transforms and opacity move, so it costs almost nothing. */
   html { scrollbar-gutter: stable; }   /* the page does not shift when a scrollbar appears */
   .brand { display: flex; align-items: center; gap: 10px; }
-  .cat-lane { position: relative; flex: 1 1 auto; min-width: 60px; max-width: 420px; height: 56px;
-              overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
+  /* Same header on every page: a 32px top line, then the title row. The cat's strip is
+     pinned to the same spot of the screen on every page (not after the title), so it
+     neither moves nor changes size when switching pages. */
+  header { padding-top: 14px; }
+  header .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 32px; min-height: 32px; }
+  header .dateline { color: var(--muted); font-size: var(--fs-small); font-weight: 600; }
+  header .brand { height: 56px; }
+  header .brand h1 { margin: 0; }
+  .cat-lane { position: absolute; top: 46px; left: max(230px, calc(50% - 130px)); right: max(16px, calc(50% - 360px));
+              height: 56px; overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
   @view-transition { navigation: auto; }
   ::view-transition-group(home-suite-cat) { animation-duration: .35s; }
   /* one cat, not two fading into each other */
@@ -756,9 +766,7 @@ const CONFIG = {
   var showDone = false;
   var queue = Promise.resolve();
   var inFlight = 0;
-  var NOTIFY_KEY = "home-todos-notify-v1";
-  var notifyTo = null;   // { topic, click } for phone notifications, from the helper
-  var waitingPings = []; // new to-dos made before the helper said where to send them
+  var PUSH_ENDPOINT_KEY = "home-suite-push-endpoint";   // this device's alert address (set on Home)
   var lastLoad = 0;
   var serverLists = [];    // [{ name, type, icon, text, updated }] from the Lists tab
   var notes = {};          // note text by list name, as typed here
@@ -814,11 +822,6 @@ const CONFIG = {
           var err = new Error((out && out.error) || "Could not save.");
           err.wrongPass = !!out.needsSetup;
           throw err;
-        }
-        if (out.notify) {
-          notifyTo = out.notify;
-          store(NOTIFY_KEY, JSON.stringify(out.notify));
-          waitingPings.splice(0).forEach(function (w) { notifyPhones(w[0], w[1]); });
         }
         return out;
       });
@@ -1118,7 +1121,6 @@ const CONFIG = {
 
   function lock(message) {
     store(DEVICE_KEY, null);
-    store(NOTIFY_KEY, null);
     el.bar.hidden = true;
     el.main.hidden = true;
     el.gate.hidden = false;
@@ -1149,22 +1151,9 @@ const CONFIG = {
     el.addInput.focus();
     saveCache();
     render();
-    send({ action: "todoAdd", id: it.id, list: it.list, task: it.task });
-    notifyPhones(it.list, it.task);
+    // The helper alerts the owner's other phones; "from" keeps this one quiet.
+    send({ action: "todoAdd", id: it.id, list: it.list, task: it.task, from: store(PUSH_ENDPOINT_KEY) || "" });
   });
-
-  // A new to-do rings every phone that follows the Home Suite channel in the ntfy app.
-  // Sent from this device: ntfy's free allowance is per internet address, and Google's
-  // servers share one, so the helper script cannot send it.
-  function notifyPhones(list, task) {
-    if (!notifyTo) { try { notifyTo = JSON.parse(store(NOTIFY_KEY) || "null"); } catch (e) { notifyTo = null; } }
-    if (!notifyTo || !notifyTo.topic) { waitingPings.push([list, task]); return; }
-    var tag = { "things to order": "shopping_cart", "home chores": "broom" }[list.toLowerCase()] || "pushpin";
-    fetch("https://ntfy.sh", {
-      method: "POST",
-      body: JSON.stringify({ topic: notifyTo.topic, title: "New in " + list, message: task, tags: [tag], click: notifyTo.click })
-    }).catch(function () { /* no notification this time; the to-do is still saved */ });
-  }
 
   el.doneToggle.addEventListener("click", function () { showDone = !showDone; render(); });
   el.clearDone.addEventListener("click", function () {
@@ -1204,6 +1193,9 @@ const CONFIG = {
     /* The cat's mind. Each thing it does lasts a random time, and what comes next is a
        weighted random pick, like a real cat: never the same loop twice. Opening another
        Home Suite page carries on where the last page left off (same spot, same action). */
+    var dateLine = document.getElementById("dateLine");
+    if (dateLine) dateLine.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
     (function catLife() {
       var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
       if (!lane || !cat) return;
@@ -1240,7 +1232,7 @@ const CONFIG = {
       function rand(a, b) { return a + Math.random() * (b - a); }
       function pick(weights, not) {
         var names = Object.keys(weights).filter(function (n) { return n !== not || n === "sleep" || n === "walk"; });
-        if (room() < 40) names = names.filter(function (n) { return !ACTS[n][3]; });
+        if (room() < 30) names = names.filter(function (n) { return !ACTS[n][3]; });
         if (!names.length) return "sit";
         var total = names.reduce(function (s, n) { return s + weights[n]; }, 0), r = Math.random() * total;
         for (var i = 0; i < names.length; i++) { r -= weights[names[i]]; if (r <= 0) return names[i]; }
@@ -1322,8 +1314,12 @@ const CONFIG = {
         place(saved.x - laneLeft());
         void cat.getBoundingClientRect();
         cat.style.transition = "";
-        if (saved.act === "walk" || saved.act === "trot") run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft());
-        else if (ACTS[saved.act][3]) run(saved.act);
+        // Moving on: wait one frame so the walk starts from the spot it was saved at.
+        act = saved.act;
+        if (saved.act === "walk" || saved.act === "trot") {
+          show(saved.act);
+          requestAnimationFrame(function () { run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft()); });
+        } else if (ACTS[saved.act][3]) { show(saved.act); requestAnimationFrame(function () { run(saved.act); }); }
         else run(saved.act, Math.max(1, (saved.left || 0) / 1000));
       } else {
         facing = Math.random() < .5 ? 1 : -1;

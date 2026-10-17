@@ -29,9 +29,7 @@ var OWNER_KEY = "change-me";
 var VOICE_FOLDER_NAME = "Recipe voice notes";
 var PHOTO_FOLDER_NAME = "Recipe photos";
 
-// Notifications for new to-dos go through ntfy (free app for Android and iPhone).
-// The private channel name is kept in this script's settings, not in this file:
-// it is set once from a phone with the "notifySetup" request (see README.md).
+// Where a tapped "new to-do" alert opens.
 var TODOS_PAGE_URL = "https://arcbha.github.io/Cooks-eyes/todos/";
 
 // The tab that holds the day-by-day menu plan. Created on first save.
@@ -132,7 +130,7 @@ function doPost(e) {
       return reply(pic ? { ok: true, mimeType: pic.mimeType, data: pic.data }
                        : { ok: false, error: "Could not get this reel's picture." });
     }
-    if (req.action === "notifySetup") return notifySetup(req);
+    if (/^push/.test(String(req.action || ""))) return pushAction(req);
     if (req.action === "lockDown") return lockDown();
     if (/^todo/.test(String(req.action || ""))) {
       lock.waitLock(20000);
@@ -301,6 +299,7 @@ function todoAction(req) {
     var id = /^[\w-]{6,40}$/.test(String(req.id || "")) ? String(req.id) : Utilities.getUuid().slice(0, 8);
     if (!todoRow(sheet, id)) {
       sheet.appendRow([id, list, task, "", new Date(), ""]);
+      pushAll(null, String(req.from || ""));   // ring the owner's other phones
     }
   } else if (action === "todoSet" || action === "todoDelete") {
     var row = todoRow(sheet, req.id);
@@ -348,15 +347,68 @@ function todoAction(req) {
     return reply({ ok: false, error: "Unknown request." });
   }
   SpreadsheetApp.flush();
-  return reply({ ok: true, items: readTodos(sheet), lists: readLists(lists), notify: notifyTarget() });
+  return reply({ ok: true, items: readTodos(sheet), lists: readLists(lists), push: pushInfo() });
 }
 
-// Where the To-dos page sends its "new to-do" notifications. The page sends them
-// itself, from the owner's own connection: ntfy's free allowance is counted per
-// internet address, and every Google server shares one, so sending from here fails.
-function notifyTarget() {
-  var topic = PropertiesService.getScriptProperties().getProperty("NTFY_TOPIC");
-  return topic ? { topic: topic, click: TODOS_PAGE_URL } : null;
+/* ---------------- phone alerts (web push) ---------------- */
+
+// What a page needs to turn alerts on: the public half of the signing key.
+function pushInfo() {
+  var pub = PropertiesService.getScriptProperties().getProperty("VAPID_PUBLIC");
+  return pub ? { key: pub } : null;
+}
+
+// { key, action: "pushSubscribe" | "pushUnsubscribe" | "pushTest", endpoint }
+// { key, action: "pushNews", since }   what is new since the phone last looked
+// { key, action: "pushSetup", vapidPublic, vapidPrivate }   once, by the owner
+function pushAction(req) {
+  var props = PropertiesService.getScriptProperties();
+  var endpoint = String(req.endpoint || "");
+  if (req.action === "pushSetup") {
+    if (!/^[\w-]{86,88}$/.test(String(req.vapidPublic || "")) || !/^[\w-]{42,44}$/.test(String(req.vapidPrivate || ""))) {
+      return reply({ ok: false, error: "Those are not signing keys." });
+    }
+    props.setProperty("VAPID_PUBLIC", req.vapidPublic);
+    props.setProperty("VAPID_PRIVATE", req.vapidPrivate);
+    return reply({ ok: true });
+  }
+  if (req.action === "pushNews") {
+    var since = Number(req.since) || 0, now = Date.now();
+    var items = readTodos(suiteSheet(TODO_SHEET_NAME, TODO_HEADERS)).filter(function (it) {
+      return !it.done && it.added > since;
+    }).slice(-5);
+    var test = Number(props.getProperty("PUSH_TEST_AT") || 0) > since;
+    return reply({ ok: true, now: now, test: test, items: items });
+  }
+  if (!/^https:\/\/[\w.-]+\//.test(endpoint) || endpoint.length > 1000) return reply({ ok: false, error: "No alert address." });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    if (req.action === "pushSubscribe") {
+      var subs = readSubs().filter(function (s) { return s.endpoint !== endpoint; });
+      subs.push({ endpoint: endpoint, at: Date.now() });
+      props.setProperty("PUSH_SUBS", JSON.stringify(subs.slice(-20)));
+      return reply({ ok: true });
+    }
+    if (req.action === "pushUnsubscribe") { removeSub(endpoint); return reply({ ok: true }); }
+    if (req.action === "pushTest") {
+      props.setProperty("PUSH_TEST_AT", String(Date.now()));
+      var codes = pushAll(endpoint);
+      return reply({ ok: codes.length > 0 && codes.every(function (c) { return c >= 200 && c < 300; }), sent: codes,
+                     error: codes.length ? "" : "This device has not turned alerts on yet." });
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  return reply({ ok: false, error: "Unknown request." });
+}
+
+function readSubs() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty("PUSH_SUBS") || "[]"); } catch (e) { return []; }
+}
+function removeSub(endpoint) {
+  var subs = readSubs().filter(function (s) { return s.endpoint !== endpoint; });
+  PropertiesService.getScriptProperties().setProperty("PUSH_SUBS", JSON.stringify(subs));
 }
 
 function listRow(sheet, name) {
@@ -405,7 +457,7 @@ function fillReelPictures() {
   return text;
 }
 
-/* ---------------- notifications (ntfy) ---------------- */
+/* ---------------- reaching other websites ---------------- */
 
 // <external>
 // The cover picture of a public Instagram reel or post, taken from Instagram's own
@@ -436,48 +488,150 @@ function reelPicture(link) {
   }
 }
 
-// Sends "New in Things to order: Milk" to every phone subscribed to the channel.
-// A failed notification never stops the to-do from being saved. Returns ntfy's answer.
-function notifyNewTodo(list, task) {
+// New to-dos ring the owner's phones as "Home Suite" (standard web push, the same
+// thing apps installed from a website use). Each phone turns alerts on once from
+// the Home page; this script then sends an empty "wake up" push to each of them,
+// and the phone asks this script what is new (pushNews) and shows it.
+// The signing key (VAPID) is kept in this script's settings, never in the code.
+function pushAll(onlyEndpoint, skipEndpoint) {
   var props = PropertiesService.getScriptProperties();
-  var topic = props.getProperty("NTFY_TOPIC");
-  if (!topic) return "no channel set";
-  var tags = { "things to order": "shopping_cart", "home chores": "broom" }[list.toLowerCase()] || "pushpin";
-  // An ntfy access token (Script Property NTFY_TOKEN, from a free ntfy.sh account) gives
-  // the script its own daily allowance instead of the one shared by all Google servers.
-  var token = props.getProperty("NTFY_TOKEN");
+  var pub = props.getProperty("VAPID_PUBLIC"), priv = props.getProperty("VAPID_PRIVATE");
+  if (!pub || !priv) return [];
+  var subs = readSubs().filter(function (s) {
+    return onlyEndpoint ? s.endpoint === onlyEndpoint : s.endpoint !== skipEndpoint;
+  });
+  if (!subs.length) return [];
+  var requests = subs.map(function (s) {
+    return {
+      url: s.endpoint, method: "post", muteHttpExceptions: true,
+      headers: { Authorization: "vapid t=" + vapidJwt(s.endpoint, priv) + ", k=" + pub, TTL: "86400", Urgency: "high" },
+      contentType: "application/octet-stream", payload: ""
+    };
+  });
+  var codes = [];
   try {
-    var res = UrlFetchApp.fetch("https://ntfy.sh", {
-      method: "post",
-      contentType: "application/json",
-      headers: token ? { Authorization: "Bearer " + token } : {},
-      payload: JSON.stringify({ topic: topic, title: "New in " + list, message: task, tags: [tags], click: TODOS_PAGE_URL }),
-      muteHttpExceptions: true
+    UrlFetchApp.fetchAll(requests).forEach(function (res, i) {
+      var code = res.getResponseCode();
+      codes.push(code);
+      if (code === 404 || code === 410) removeSub(subs[i].endpoint);   // that phone turned alerts off
     });
-    return res.getResponseCode() === 200 ? "sent" : "ntfy said " + res.getResponseCode() + ": " + res.getContentText().slice(0, 160);
-  } catch (e) {
-    return "not sent: " + e.message;
+  } catch (e) { codes.push(String(e.message || e)); }
+  return codes;
+}
+
+// A signed pass for one push service (JWT, ES256), reused for up to 11 hours.
+function vapidJwt(endpoint, privateKey) {
+  var aud = (String(endpoint).match(/^https:\/\/[^\/]+/) || [""])[0];
+  var cache = CacheService.getScriptCache(), name = "vapid-" + Utilities.base64EncodeWebSafe(aud).slice(0, 200);
+  var saved = cache.get(name);
+  if (saved) return saved;
+  var b64 = function (bytes) { return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, ""); };
+  var text = function (s) { return b64(Utilities.newBlob(s).getBytes()); };
+  var input = text(JSON.stringify({ typ: "JWT", alg: "ES256" })) + "." +
+              text(JSON.stringify({ aud: aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: "https://arcbha.github.io/Cooks-eyes/" }));
+  var jwt = input + "." + b64(es256Sign(input, Utilities.base64DecodeWebSafe(padB64(privateKey))));
+  cache.put(name, jwt, 11 * 3600);
+  return jwt;
+}
+
+function padB64(s) { s = String(s); return s + "====".slice((s.length % 4) || 4); }
+
+// ECDSA P-256 with SHA-256 (RFC 6979 deterministic nonce), using BigInt.
+var EC_P = BigInt("0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff");
+var EC_N = BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
+var EC_G = [BigInt("0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"),
+            BigInt("0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5"), BigInt(1)];
+
+function es256Sign(message, privateBytes) {
+  var d = bytesToBig(privateBytes);
+  var h = bytesToBig(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, message, Utilities.Charset.UTF_8)) % EC_N;
+  var k = rfc6979(d, h);
+  var R = ecAffine(ecMul(k, EC_G));
+  var r = R[0] % EC_N;
+  var s = (ecInv(k, EC_N) * ((h + r * d) % EC_N)) % EC_N;
+  return bigToBytes(r, 32).concat(bigToBytes(s, 32));
+}
+
+function rfc6979(d, h) {
+  var hmac = function (key, data) { return Utilities.computeHmacSha256Signature(signed(data), signed(key)).map(function (b) { return b & 255; }); };
+  var x = bigToBytes(d, 32), m = bigToBytes(h, 32);
+  var V = [], K = [];
+  for (var i = 0; i < 32; i++) { V.push(1); K.push(0); }
+  K = hmac(K, V.concat([0], x, m)); V = hmac(K, V);
+  K = hmac(K, V.concat([1], x, m)); V = hmac(K, V);
+  for (;;) {
+    V = hmac(K, V);
+    var k = bytesToBig(V);
+    if (k > BigInt(0) && k < EC_N) return k;
+    K = hmac(K, V.concat([0])); V = hmac(K, V);
   }
 }
 
-// { key, action: "notifySetup", topic, token, test } sets the private channel name
-// (letters, numbers, - and _; at least 12) and can send a test notification.
-function notifySetup(req) {
-  var topic = String(req.topic || "").trim();
-  if (!/^[A-Za-z0-9_-]{12,64}$/.test(topic)) return reply({ ok: false, error: "Channel name must be 12-64 letters, numbers, - or _." });
-  PropertiesService.getScriptProperties().setProperty("NTFY_TOPIC", topic);
-  if (req.token !== undefined) {
-    if (req.token) PropertiesService.getScriptProperties().setProperty("NTFY_TOKEN", String(req.token).trim());
-    else PropertiesService.getScriptProperties().deleteProperty("NTFY_TOKEN");
+function signed(bytes) { return bytes.map(function (b) { b = b & 255; return b > 127 ? b - 256 : b; }); }
+function bytesToBig(bytes) {
+  var hex = "0x0";
+  for (var i = 0; i < bytes.length; i++) hex += ("0" + (bytes[i] & 255).toString(16)).slice(-2);
+  return BigInt(hex);
+}
+function bigToBytes(n, len) {
+  var hex = n.toString(16);
+  while (hex.length < len * 2) hex = "0" + hex;
+  var out = [];
+  for (var i = 0; i < len; i++) out.push(parseInt(hex.substr(i * 2, 2), 16));
+  return out;
+}
+function ecMod(a, m) { var r = a % m; return r < BigInt(0) ? r + m : r; }
+function ecInv(a, m) {
+  var lm = BigInt(1), hm = BigInt(0), low = ecMod(a, m), high = m;
+  while (low > BigInt(1)) {
+    var q = high / low, nm = hm - lm * q, nw = high - low * q;
+    hm = lm; high = low; lm = nm; low = nw;
   }
-  var sent = req.test ? notifyNewTodo("Home To-dos", "Notifications are on. New to-dos will show up here.") : "";
-  return reply({ ok: true, test: sent });
+  return ecMod(lm, m);
+}
+// Points in Jacobian form [X, Y, Z]; null is the point at infinity.
+function ecDouble(P) {
+  if (!P || P[1] === BigInt(0)) return null;
+  var p = EC_P, X = P[0], Y = P[1], Z = P[2];
+  var delta = Z * Z % p, gamma = Y * Y % p, beta = X * gamma % p;
+  var alpha = BigInt(3) * ecMod(X - delta, p) % p * ((X + delta) % p) % p;
+  var X3 = ecMod(alpha * alpha - BigInt(8) * beta, p);
+  var Z3 = ecMod((Y + Z) * (Y + Z) - gamma - delta, p);
+  var Y3 = ecMod(alpha * ecMod(BigInt(4) * beta - X3, p) - BigInt(8) * (gamma * gamma % p), p);
+  return [X3, Y3, Z3];
+}
+function ecAdd(P, Q) {
+  if (!P) return Q;
+  if (!Q) return P;
+  var p = EC_P;
+  var Z1Z1 = P[2] * P[2] % p, Z2Z2 = Q[2] * Q[2] % p;
+  var U1 = P[0] * Z2Z2 % p, U2 = Q[0] * Z1Z1 % p;
+  var S1 = P[1] * Q[2] % p * Z2Z2 % p, S2 = Q[1] * P[2] % p * Z1Z1 % p;
+  var H = ecMod(U2 - U1, p), r = ecMod(BigInt(2) * (S2 - S1), p);
+  if (H === BigInt(0)) return r === BigInt(0) ? ecDouble(P) : null;
+  var I = BigInt(4) * H * H % p, J = H * I % p, V = U1 * I % p;
+  var X3 = ecMod(r * r - J - BigInt(2) * V, p);
+  var Y3 = ecMod(r * ecMod(V - X3, p) - BigInt(2) * S1 * J, p);
+  var Z3 = ecMod(((P[2] + Q[2]) * (P[2] + Q[2]) - Z1Z1 - Z2Z2) % p * H, p);
+  return [X3, Y3, Z3];
+}
+function ecMul(k, P) {
+  var R = null, bits = k.toString(2);
+  for (var i = 0; i < bits.length; i++) {
+    R = ecDouble(R);
+    if (bits[i] === "1") R = ecAdd(R, P);
+  }
+  return R;
+}
+function ecAffine(P) {
+  var zi = ecInv(P[2], EC_P), zi2 = zi * zi % EC_P;
+  return [P[0] * zi2 % EC_P, P[1] * zi2 % EC_P * zi % EC_P];
 }
 
-// Run this once from the script editor (Run button) to give the script
-// permission to send notifications.
+// Run this once from the script editor (Run button) to let the script reach other
+// websites (Instagram pictures, phone alerts).
 function authorizeNotifications() {
-  UrlFetchApp.fetch("https://ntfy.sh/v1/health");
+  UrlFetchApp.fetch("https://www.google.com/generate_204");
 }
 
 // Turns off "Publish to web" for the recipe sheet (part of lockDown).

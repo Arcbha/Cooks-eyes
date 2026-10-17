@@ -527,8 +527,16 @@ const CONFIG = {
      only transforms and opacity move, so it costs almost nothing. */
   html { scrollbar-gutter: stable; }   /* the page does not shift when a scrollbar appears */
   .brand { display: flex; align-items: center; gap: 10px; }
-  .cat-lane { position: relative; flex: 1 1 auto; min-width: 60px; max-width: 420px; height: 56px;
-              overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
+  /* Same header on every page: a 32px top line, then the title row. The cat's strip is
+     pinned to the same spot of the screen on every page (not after the title), so it
+     neither moves nor changes size when switching pages. */
+  header { padding-top: 14px; }
+  header .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 32px; min-height: 32px; }
+  header .dateline { color: var(--muted); font-size: var(--fs-small); font-weight: 600; }
+  header .brand { height: 56px; }
+  header .brand h1 { margin: 0; }
+  .cat-lane { position: absolute; top: 46px; left: max(230px, calc(50% - 130px)); right: max(16px, calc(50% - 360px));
+              height: 56px; overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
   @view-transition { navigation: auto; }
   ::view-transition-group(home-suite-cat) { animation-duration: .35s; }
   /* one cat, not two fading into each other */
@@ -687,6 +695,7 @@ const CONFIG = {
 <body>
 <div class="wrap">
   <header>
+    <div class="topline"><span class="dateline" id="dateLine"></span></div>
     <div class="brand">
       <h1 id="title">Recipes</h1>
       <div class="cat-lane" id="catLane" aria-hidden="true">
@@ -2390,6 +2399,9 @@ const CONFIG = {
     /* The cat's mind. Each thing it does lasts a random time, and what comes next is a
        weighted random pick, like a real cat: never the same loop twice. Opening another
        Home Suite page carries on where the last page left off (same spot, same action). */
+    var dateLine = document.getElementById("dateLine");
+    if (dateLine) dateLine.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
     (function catLife() {
       var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
       if (!lane || !cat) return;
@@ -2426,7 +2438,7 @@ const CONFIG = {
       function rand(a, b) { return a + Math.random() * (b - a); }
       function pick(weights, not) {
         var names = Object.keys(weights).filter(function (n) { return n !== not || n === "sleep" || n === "walk"; });
-        if (room() < 40) names = names.filter(function (n) { return !ACTS[n][3]; });
+        if (room() < 30) names = names.filter(function (n) { return !ACTS[n][3]; });
         if (!names.length) return "sit";
         var total = names.reduce(function (s, n) { return s + weights[n]; }, 0), r = Math.random() * total;
         for (var i = 0; i < names.length; i++) { r -= weights[names[i]]; if (r <= 0) return names[i]; }
@@ -2508,8 +2520,12 @@ const CONFIG = {
         place(saved.x - laneLeft());
         void cat.getBoundingClientRect();
         cat.style.transition = "";
-        if (saved.act === "walk" || saved.act === "trot") run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft());
-        else if (ACTS[saved.act][3]) run(saved.act);
+        // Moving on: wait one frame so the walk starts from the spot it was saved at.
+        act = saved.act;
+        if (saved.act === "walk" || saved.act === "trot") {
+          show(saved.act);
+          requestAnimationFrame(function () { run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft()); });
+        } else if (ACTS[saved.act][3]) { show(saved.act); requestAnimationFrame(function () { run(saved.act); }); }
         else run(saved.act, Math.max(1, (saved.left || 0) / 1000));
       } else {
         facing = Math.random() < .5 ? 1 : -1;

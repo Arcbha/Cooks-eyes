@@ -20,7 +20,7 @@ This repo is the owner's **Home Suite**, published on GitHub Pages:
   owner's **device key**, saved on each of the owner's devices by opening the
   setup link (`home/#setup=<key>`) once, under the browser storage key
   `home-suite-device-key-v1`. The cook's phone never gets the key. The key,
-  the setup link and the ntfy topic must never be committed (the repo is
+  the setup link and the alert signing key must never be committed (the repo is
   public, which free GitHub Pages needs).
 
 ## Updating the helper script (no copy-paste needed)
@@ -76,12 +76,15 @@ session.
   from Instagram's public embed page: `reelPicture`; sheet menu "Fill Instagram
   pictures" does the same for older rows); an
   existing dish in that section only has its video link replaced on a second tap.
-- New to-dos send a phone notification through ntfy.sh, sent by the To-dos page
-  itself from the owner's device (ntfy's free allowance is counted per internet
-  address, even with an account token, and Google's servers share one address, so
-  the helper cannot send it). The helper hands the private channel name to set-up
-  devices in its to-dos answer (`notify`, from Script Property `NTFY_TOPIC`);
-  never put the channel name or the ntfy token in the repo.
+- New to-dos send phone alerts as **Home Suite** itself (standard web push; no
+  ntfy). Each phone turns them on from the "To-do alerts" card on Home (iPhone:
+  add Home Suite to the home screen first). `manifest.webmanifest`, `sw.js` and
+  `icons/` at the site root make Home Suite installable; only Home and To-dos
+  link them, never the cook's page. On a new to-do the helper sends an empty push
+  (signed with its VAPID key, ES256 in the script) to every saved phone except the
+  one that added it (`from`); `sw.js` then asks the helper `pushNews` and shows
+  "New in <list>: <task>". Keys and phone addresses live in Script Properties
+  (`VAPID_PUBLIC`, `VAPID_PRIVATE`, `PUSH_SUBS`), never in the repo.
 - The day's menu lives in the sheet's "Menu" tab (Date, Meal, Dish name, Note),
   read live through the edit link. The plan page (site address + `#plan`) saves
   it through the same helper script, one group per meal in `CONFIG.MEALS`
@@ -122,7 +125,10 @@ session.
   zoomies, loaf, sleep, dream, purr lying), each a random length, the next a
   weighted random pick; first visits start at a random spot and action. The
   cat's state is kept in browser storage (`home-suite-cat-v1`) so the next page
-  carries on, and a cross-page view transition keeps the cat in place. Only
+  carries on, and a cross-page view transition keeps the cat in place. All pages
+  share one header layout (32px top line, then a 56px title row), and the cat's
+  strip is pinned to the same spot of the screen on every page, not placed after
+  the title, so it never shifts or resizes between pages. Only
   transforms and opacity move; it sits still for reduced motion.
 - Font: SF Pro (owner has Apple's permission), shipped as one small variable
   web font, `fonts/sf-pro.woff2` (Latin only, weights 400-800), the one shared

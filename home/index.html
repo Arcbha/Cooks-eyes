@@ -11,6 +11,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Home Suite">
 <title>Home Suite</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232A1B10'/%3E%3Cpath d='M14 31L32 15l18 16v17a2 2 0 0 1-2 2H38V38H26v12H16a2 2 0 0 1-2-2z' fill='%23FBF5EA'/%3E%3C/svg%3E">
 
 <script>
@@ -191,6 +193,15 @@ const CONFIG = {
   }
   .device { margin: 18px 4px 0; color: var(--muted); font-size: var(--fs-small); text-align: center; }
   .device.ok { color: var(--leaf); }
+  .alerts { margin-top: 18px; padding: 16px; border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); }
+  .alerts h2 { margin: 0; font-size: var(--fs-body); font-weight: 700; }
+  .alerts p { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-small); line-height: 1.35; }
+  .alerts-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .alerts-actions:empty { display: none; }
+  .pill { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px; background: var(--fill); color: var(--sky);
+          font: inherit; font-size: var(--fs-small); font-weight: 700; cursor: pointer; }
+  .pill.solid { background: var(--sky); color: #FFFFFF; }
+  .pill:disabled { opacity: .5; }
   a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   /* ============ Apple-style layer ============ */
@@ -241,8 +252,16 @@ const CONFIG = {
      only transforms and opacity move, so it costs almost nothing. */
   html { scrollbar-gutter: stable; }   /* the page does not shift when a scrollbar appears */
   .brand { display: flex; align-items: center; gap: 10px; }
-  .cat-lane { position: relative; flex: 1 1 auto; min-width: 60px; max-width: 420px; height: 56px;
-              overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
+  /* Same header on every page: a 32px top line, then the title row. The cat's strip is
+     pinned to the same spot of the screen on every page (not after the title), so it
+     neither moves nor changes size when switching pages. */
+  header { padding-top: 14px; }
+  header .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 32px; min-height: 32px; }
+  header .dateline { color: var(--muted); font-size: var(--fs-small); font-weight: 600; }
+  header .brand { height: 56px; }
+  header .brand h1 { margin: 0; }
+  .cat-lane { position: absolute; top: 46px; left: max(230px, calc(50% - 130px)); right: max(16px, calc(50% - 360px));
+              height: 56px; overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
   @view-transition { navigation: auto; }
   ::view-transition-group(home-suite-cat) { animation-duration: .35s; }
   /* one cat, not two fading into each other */
@@ -401,7 +420,7 @@ const CONFIG = {
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow" id="greeting"></span>
+    <div class="topline"><span class="eyebrow" id="greeting"></span></div>
     <div class="brand">
       <h1 id="title">Home Suite</h1>
       <div class="cat-lane" id="catLane" aria-hidden="true">
@@ -529,6 +548,15 @@ const CONFIG = {
   </header>
   <ul class="apps" id="apps"></ul>
   <p class="device" id="device" hidden></p>
+  <section class="alerts" id="alerts" hidden>
+    <div class="alerts-text"><h2>To-do alerts</h2><p id="alertsMsg"></p></div>
+    <div class="alerts-actions">
+      <button class="pill solid" id="alertsOn" type="button" hidden>Turn on alerts</button>
+      <button class="pill solid" id="installApp" type="button" hidden>Install app</button>
+      <button class="pill" id="alertsTest" type="button" hidden>Send a test</button>
+      <button class="pill" id="alertsOff" type="button" hidden>Turn off</button>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -575,8 +603,12 @@ const CONFIG = {
   var DEVICE_KEY = "home-suite-device-key-v1"; // set by the setup link; shared by every Home Suite page
   var TODO_CACHE_KEY = "home-todos-cache-v1"; // the To-dos page keeps its last list here
 
-  function store(key) {
-    try { return localStorage.getItem(key); } catch (e) { return null; }
+  function store(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      localStorage.setItem(key, value);
+    } catch (e) { /* private mode or blocked storage */ }
+    return null;
   }
   function pad2(n) { return ("0" + n).slice(-2); }
   function dayKey(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
@@ -694,12 +726,26 @@ const CONFIG = {
     device.className = "device" + (ok ? " ok" : "");
     device.hidden = false;
   }
+  /* Phone alerts: the background helper (../sw.js) needs this device's key to ask what is new. */
+  var SW_CONFIG = new URL("../home-suite-config", location.href).href;
+  function alertConfig(extra) {
+    if (!("caches" in window)) return Promise.resolve();
+    return caches.open("home-suite").then(function (c) {
+      return c.match(SW_CONFIG).then(function (res) { return res ? res.json() : {}; }).then(function (cfg) {
+        cfg.helper = CONFIG.HELPER_URL;
+        cfg.key = store(DEVICE_KEY) || "";
+        Object.keys(extra || {}).forEach(function (k) { cfg[k] = extra[k]; });
+        return c.put(SW_CONFIG, new Response(JSON.stringify(cfg), { headers: { "Content-Type": "application/json" } }));
+      });
+    }).catch(function () { /* storage blocked: alerts show a general message */ });
+  }
+
   if (store(DEVICE_KEY)) {
     if (window.__justSetUp) deviceNote("This device is set up. Home To-dos and the recipe tools will work here.", true);
     fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ key: store(DEVICE_KEY), action: "todos" }) })
       .then(function (res) { return res.json(); })
       .then(function (out) {
-        if (out && out.ok) showTodos(out.items);
+        if (out && out.ok) { showTodos(out.items); setUpAlerts(out.push && out.push.key); }
         else if (out && out.needsSetup) {
           try { localStorage.removeItem(DEVICE_KEY); } catch (e) { /* ignore */ }
           deviceNote("This device's setup link is no longer valid. Open your current setup link once.");
@@ -709,6 +755,116 @@ const CONFIG = {
   } else {
     deviceNote("This device isn't set up yet. Open your Home Suite setup link on it once.");
   }
+
+  /* ---------- to-do alerts on this device (shown as "Home Suite", not another app) ---------- */
+
+  var PUSH_ENDPOINT_KEY = "home-suite-push-endpoint";
+  var al = {
+    box: document.getElementById("alerts"), msg: document.getElementById("alertsMsg"),
+    on: document.getElementById("alertsOn"), off: document.getElementById("alertsOff"),
+    test: document.getElementById("alertsTest"), install: document.getElementById("installApp")
+  };
+  var installPrompt = null;
+  var iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var installed = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installPrompt = e;
+    al.install.hidden = al.box.hidden;
+  });
+  al.install.addEventListener("click", function () {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then(function () { installPrompt = null; al.install.hidden = true; });
+  });
+
+  function alertsShow(text, buttons) {
+    al.box.hidden = false;
+    al.msg.textContent = text;
+    ["on", "off", "test"].forEach(function (b) { al[b].hidden = (buttons || []).indexOf(b) < 0; });
+    al.install.hidden = !installPrompt;
+  }
+
+  function helperPost(body) {
+    body.key = store(DEVICE_KEY) || "";
+    return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) }).then(function (res) { return res.json(); });
+  }
+
+  function keyBytes(b64) {
+    var s = atob((b64 + "===".slice((b64.length + 3) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+
+  var pushKey = "";
+  function setUpAlerts(key) {
+    pushKey = key || "";
+    if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+      if (iPhone && !installed) {
+        alertsShow("On iPhone: tap Share, then Add to Home Screen. Open Home Suite from your home screen and turn alerts on there.");
+      } else alertsShow("This browser can't show alerts. Try Chrome on Android, or Safari on iPhone after adding Home Suite to the home screen.");
+      return;
+    }
+    if (!pushKey) { alertsShow("Alerts are not ready on the helper yet."); return; }
+    navigator.serviceWorker.register("../sw.js", { scope: "../" }).then(function (reg) {
+      alertConfig();
+      return reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      if (sub) {
+        store(PUSH_ENDPOINT_KEY, sub.endpoint);
+        alertsShow("On for this device. New to-dos show up as Home Suite alerts." +
+                   (installed || iPhone ? "" : " Install the app so they carry the Home Suite name and icon."), ["test", "off"]);
+      } else if (Notification.permission === "denied") {
+        alertsShow("Alerts are blocked for this site. Allow notifications for it in the browser's settings, then reload.");
+      } else {
+        alertsShow("Get an alert on this device when a to-do is added, from Home Suite itself.", ["on"]);
+      }
+    }).catch(function () { alertsShow("Alerts could not start on this device."); });
+  }
+
+  al.on.addEventListener("click", function () {
+    al.on.disabled = true;
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") throw new Error("denied");
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
+      return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(pushKey) });
+    }).then(function (sub) {
+      return helperPost({ action: "pushSubscribe", endpoint: sub.endpoint }).then(function (out) {
+        if (!out || !out.ok) throw new Error((out && out.error) || "not saved");
+        store(PUSH_ENDPOINT_KEY, sub.endpoint);
+        return alertConfig({ since: Date.now() });
+      });
+    }).then(function () {
+      setUpAlerts(pushKey);
+    }).catch(function (err) {
+      alertsShow(err && err.message === "denied"
+        ? "Alerts were not allowed. To change that, allow notifications for this site in the browser's settings."
+        : "Could not turn alerts on. Check the internet and try again.", ["on"]);
+    }).then(function () { al.on.disabled = false; });
+  });
+
+  al.off.addEventListener("click", function () {
+    navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+      if (!sub) return;
+      helperPost({ action: "pushUnsubscribe", endpoint: sub.endpoint }).catch(function () {});
+      return sub.unsubscribe();
+    }).then(function () {
+      try { localStorage.removeItem(PUSH_ENDPOINT_KEY); } catch (e) { /* ignore */ }
+      setUpAlerts(pushKey);
+    });
+  });
+
+  al.test.addEventListener("click", function () {
+    al.test.disabled = true;
+    al.test.textContent = "Sending...";
+    helperPost({ action: "pushTest", endpoint: store(PUSH_ENDPOINT_KEY) || "" }).then(function (out) {
+      al.test.textContent = out && out.ok ? "Test sent" : "Not sent";
+    }).catch(function () { al.test.textContent = "Not sent"; })
+      .then(function () { setTimeout(function () { al.test.textContent = "Send a test"; al.test.disabled = false; }, 2500); });
+  });
 
   // Recipes: today's menu from the recipe sheet's Menu tab (read through the helper).
   if (CONFIG.HELPER_URL) {
@@ -787,6 +943,9 @@ const CONFIG = {
     /* The cat's mind. Each thing it does lasts a random time, and what comes next is a
        weighted random pick, like a real cat: never the same loop twice. Opening another
        Home Suite page carries on where the last page left off (same spot, same action). */
+    var dateLine = document.getElementById("dateLine");
+    if (dateLine) dateLine.textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+
     (function catLife() {
       var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
       if (!lane || !cat) return;
@@ -823,7 +982,7 @@ const CONFIG = {
       function rand(a, b) { return a + Math.random() * (b - a); }
       function pick(weights, not) {
         var names = Object.keys(weights).filter(function (n) { return n !== not || n === "sleep" || n === "walk"; });
-        if (room() < 40) names = names.filter(function (n) { return !ACTS[n][3]; });
+        if (room() < 30) names = names.filter(function (n) { return !ACTS[n][3]; });
         if (!names.length) return "sit";
         var total = names.reduce(function (s, n) { return s + weights[n]; }, 0), r = Math.random() * total;
         for (var i = 0; i < names.length; i++) { r -= weights[names[i]]; if (r <= 0) return names[i]; }
@@ -905,8 +1064,12 @@ const CONFIG = {
         place(saved.x - laneLeft());
         void cat.getBoundingClientRect();
         cat.style.transition = "";
-        if (saved.act === "walk" || saved.act === "trot") run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft());
-        else if (ACTS[saved.act][3]) run(saved.act);
+        // Moving on: wait one frame so the walk starts from the spot it was saved at.
+        act = saved.act;
+        if (saved.act === "walk" || saved.act === "trot") {
+          show(saved.act);
+          requestAnimationFrame(function () { run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft()); });
+        } else if (ACTS[saved.act][3]) { show(saved.act); requestAnimationFrame(function () { run(saved.act); }); }
         else run(saved.act, Math.max(1, (saved.left || 0) / 1000));
       } else {
         facing = Math.random() < .5 ? 1 : -1;

@@ -17,12 +17,12 @@ show on other phones when the page is opened again. The lists are kept in a
 private **Home Suite data** spreadsheet in your Google Drive (created the first
 time the page is used), not in the recipe sheet.
 
-**Notifications:** every new to-do (any list) is sent to phones through the free
-**ntfy** app (Android and iPhone). Install ntfy, tap **+**, and subscribe to the
-Home Suite channel name (kept in the helper script's settings, not in this
-repository; ask the owner for it). Tapping a notification opens To-dos.
-Google's servers share ntfy's free daily allowance, so the script sends with an
-access token from a free ntfy.sh account (kept in the script's settings).
+**Alerts:** a new to-do (any list) pops up on your other phones as a **Home
+Suite** alert, with the Home Suite icon. Turn it on once per phone from the
+**To-do alerts** card at the bottom of the Home page. On Android, also tap
+**Install app** there (or Chrome menu → Install app) so alerts carry the Home
+Suite name. On iPhone, first tap Share → **Add to Home Screen**, open Home Suite
+from the home screen, then turn alerts on. **Send a test** checks it works.
 
 **More lists and notes:** tap **+** after the list buttons, type a name, choose
 **☑ Checklist** (items to tick off) or **📝 Note** (free writing), and tap
