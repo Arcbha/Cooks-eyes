@@ -17,6 +17,11 @@ show on other phones when the page is opened again. The lists are kept in a
 private **Home Suite data** spreadsheet in your Google Drive (created the first
 time the page is used), not in the recipe sheet.
 
+**Notifications:** every new to-do (any list) is sent to phones through the free
+**ntfy** app (Android and iPhone). Install ntfy, tap **+**, and subscribe to the
+Home Suite channel name (kept in the helper script's settings, not in this
+repository; ask the owner for it). Tapping a notification opens To-dos.
+
 **More lists and notes:** tap **+** after the list buttons, type a name, choose
 **☑ Checklist** (items to tick off) or **📝 Note** (free writing), and tap
 **Create**. The built-in **📝 Notes** page and every note list are one big text
@@ -66,12 +71,17 @@ minutes and sometimes shows an older version.
 Open **https://arcbha.github.io/Cooks-eyes/#add** (or tap **Add a dish** at the
 bottom of the recipe page):
 
-1. **YouTube link:** tap **Paste** (or paste into the box). A preview shows the
-   video's picture, title and channel, so a wrong link is caught straight away.
+1. **Video link:** a YouTube or Instagram reel link. Tap **Paste** (on a laptop,
+   press Ctrl+V or ⌘V in the box). For YouTube a preview shows the video's
+   picture, title and channel; Instagram does not share its pictures, so add a
+   photo for those (a screenshot of the reel works well).
+   **Photo (optional):** picked from the phone or laptop, made small, and saved
+   in the **Recipe photos** folder in your Drive; it is shown instead of the
+   video's own picture. Instagram dishes get a small "Reel" label for the cook.
 2. **Dish name:** in any language.
 3. **Section:** tap Breakfast, Lunch/Dinner, or **+ New section** to start one
    (for example Snacks).
-4. Tap **Add dish**. It is added as a new row at the bottom of the sheet and
+4. Tap **Add dish** (or press Enter). It is added as a new row at the bottom of the sheet and
    shows on the recipe page straight away.
 
 If the dish is already in that section, the page says so; tapping the button

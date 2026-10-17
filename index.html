@@ -319,6 +319,19 @@ const CONFIG = {
   .chips-wrap .chip { flex: 1 1 130px; }
   .chip.new { border-style: dashed; }
   .add-next[hidden] { display: none; }
+  .opt { font-weight: 500; color: var(--muted); }
+  .vp-icon { flex: none; width: 112px; aspect-ratio: 16 / 9; border-radius: 10px; display: flex;
+             align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+  .vp-icon[hidden] { display: none; }
+  .photo-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .photo-row img { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+  .photo-row img[hidden], .paste-btn[hidden] { display: none; }
+  .photo-btn { display: inline-flex; align-items: center; cursor: pointer; }
+  .thumb .badge {
+    position: absolute; left: 12px; top: 12px; padding: 3px 9px; border-radius: 999px;
+    background: rgba(28, 28, 30, 0.72); color: #F5F5F7; font-size: var(--fs-label); font-weight: 600;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  }
   #addNewSection { margin-top: 10px; }
   .field input[hidden] { display: none; }
 
@@ -567,21 +580,31 @@ const CONFIG = {
 
   <section class="recorder" id="adder" hidden>
     <h2>Add a dish</h2>
-    <p class="help">Paste the YouTube link, name the dish and pick its section. It goes straight into the sheet.</p>
-    <label class="field">YouTube link
+    <p class="help">Paste a YouTube or Instagram link, name the dish and pick its section. It goes straight into the sheet.</p>
+    <form id="addFormEl" novalidate>
+    <label class="field">Video link
       <span class="paste-row">
-        <input id="addLink" type="url" inputmode="url" autocomplete="off" placeholder="https://youtu.be/...">
+        <input id="addLink" type="url" inputmode="url" autocomplete="off" placeholder="YouTube or Instagram link">
         <button class="paste-btn" id="addPaste" type="button">Paste</button>
       </span>
       <span class="hint" id="addLinkHint"></span>
     </label>
     <div class="video-preview" id="addPreview" hidden>
       <img id="addThumb" alt="">
+      <span class="vp-icon" id="addInstaIcon" hidden><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="0.6" fill="currentColor"/></svg></span>
       <div><div class="vp-title" id="addTitle"></div><div class="vp-by" id="addBy"></div></div>
     </div>
     <label class="field">Dish name
       <input id="addName" type="text" autocomplete="off" placeholder="For example: Aloo Paratha">
     </label>
+    <div class="field">Photo <span class="opt">(optional)</span>
+      <div class="photo-row">
+        <img id="addPhotoPreview" alt="" hidden>
+        <label class="paste-btn photo-btn">Choose photo<input id="addPhoto" type="file" accept="image/*" hidden></label>
+        <button class="paste-btn" id="addPhotoClear" type="button" hidden>Remove</button>
+      </div>
+      <span class="hint" id="addPhotoHint">Shown instead of the video's own picture. For Instagram, a screenshot of the reel works well.</span>
+    </div>
     <div class="field">Section
       <div class="chips chips-wrap" id="addSections" style="margin-top:6px"></div>
       <input id="addNewSection" type="text" autocomplete="off" placeholder="New section, for example: Snacks" hidden>
@@ -589,7 +612,8 @@ const CONFIG = {
     <label class="field">Passcode
       <input id="addPass" type="password" autocomplete="current-password">
     </label>
-    <button class="big-btn primary" id="addSave" type="button">Add dish</button>
+    <button class="big-btn primary" id="addSave" type="submit">Add dish</button>
+    </form>
     <p class="rec-msg" id="addMsg" hidden></p>
     <div class="add-next" id="addNext" hidden>
       <a class="big-btn" id="addRecord" href="#record"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg> Record voice instructions</a>
@@ -911,6 +935,12 @@ const CONFIG = {
       thumb.appendChild(placeholder(dish.name));
     }
 
+    if (dish.link && /instagram\.com/i.test(dish.link)) {
+      var badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "Reel";
+      thumb.appendChild(badge);
+    }
     if (dish.link) {
       var play = document.createElement("span");
       play.className = "play";
@@ -1780,8 +1810,25 @@ const CONFIG = {
     msg: document.getElementById("addMsg"),
     next: document.getElementById("addNext"),
     record: document.getElementById("addRecord"),
-    another: document.getElementById("addAnother")
+    another: document.getElementById("addAnother"),
+    form: document.getElementById("addFormEl"),
+    instaIcon: document.getElementById("addInstaIcon"),
+    photo: document.getElementById("addPhoto"),
+    photoPreview: document.getElementById("addPhotoPreview"),
+    photoClear: document.getElementById("addPhotoClear"),
+    photoHint: document.getElementById("addPhotoHint")
   };
+  var addPhoto = null;      // { mimeType, data } of the chosen photo, made small
+
+  // A YouTube or Instagram link, tidied up; null when it is neither.
+  function videoLink(raw) {
+    var url = safeUrl(raw);
+    var yt = youtubeId(url);
+    if (yt) return { kind: "youtube", id: yt, url: url };
+    var m = String(url || "").match(/instagram\.com\/(?:[\w.]+\/)?(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i);
+    if (m) return { kind: "instagram", id: m[2], url: "https://www.instagram.com/" + (m[1].toLowerCase() === "p" ? "p" : "reel") + "/" + m[2] + "/" };
+    return null;
+  }
   var addSection = "";      // the section chip picked, or "+" for a new one
   var addReplace = false;   // the dish exists; the next save replaces its video link
   var previewFor = "";
@@ -1811,36 +1858,82 @@ const CONFIG = {
   // Shows which video the link points to, so a wrong link is caught before saving.
   function updatePreview() {
     var raw = ad.link.value.trim();
-    var id = youtubeId(safeUrl(raw));
+    var video = videoLink(raw);
     addReplace = false;
     ad.save.textContent = "Add dish";
     if (!raw) { ad.preview.hidden = true; ad.hint.textContent = ""; previewFor = ""; return; }
-    if (!id) {
+    if (!video) {
       ad.preview.hidden = true;
-      ad.hint.textContent = "This doesn't look like a YouTube video link. Copy it from the video's Share button.";
+      ad.hint.textContent = "This isn't a YouTube or Instagram video link. Copy it from the video's Share button.";
       ad.hint.className = "hint error";
       previewFor = "";
       return;
     }
     ad.hint.textContent = "";
     ad.hint.className = "hint";
-    if (previewFor === id) return;
-    previewFor = id;
+    if (previewFor === video.kind + video.id) return;
+    previewFor = video.kind + video.id;
+    ad.preview.hidden = false;
+
+    if (video.kind === "instagram") {
+      // Instagram does not share its pictures with other sites, so ask for a photo instead.
+      ad.thumb.hidden = true;
+      ad.instaIcon.hidden = false;
+      ad.title.textContent = "Instagram reel";
+      ad.by.textContent = addPhoto ? "Your photo will be shown for it." : "Add a photo below so the cook sees a picture.";
+      return;
+    }
+    var id = video.id, key = previewFor;
+    ad.instaIcon.hidden = true;
+    ad.thumb.hidden = false;
     ad.thumb.src = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
     ad.title.textContent = "Checking the video...";
     ad.by.textContent = "";
-    ad.preview.hidden = false;
     fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id), { credentials: "omit" })
       .then(function (res) { if (!res.ok) throw new Error(); return res.json(); })
       .then(function (info) {
-        if (previewFor !== id) return;
+        if (previewFor !== key) return;
         ad.title.textContent = info.title || "YouTube video";
         ad.by.textContent = info.author_name || "";
       })
       .catch(function () {
-        if (previewFor !== id) return;
+        if (previewFor !== key) return;
         ad.title.textContent = "Could not check this video. It may be private or removed.";
       });
+  }
+
+  // Shrinks the chosen photo on the phone (longest side 1280px) before it is sent.
+  function choosePhoto(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      var scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.naturalWidth * scale);
+      canvas.height = Math.round(img.naturalHeight * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      var dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      URL.revokeObjectURL(url);
+      addPhoto = { mimeType: "image/jpeg", data: dataUrl.split(",")[1], preview: dataUrl };
+      ad.photoPreview.src = dataUrl;
+      ad.photoPreview.hidden = false;
+      ad.photoClear.hidden = false;
+      if (videoLink(ad.link.value) && videoLink(ad.link.value).kind === "instagram") ad.by.textContent = "Your photo will be shown for it.";
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      ad.photoHint.textContent = "That photo could not be opened. Try a JPG or PNG.";
+    };
+    img.src = url;
+  }
+
+  function clearPhoto() {
+    addPhoto = null;
+    ad.photo.value = "";
+    ad.photoPreview.hidden = true;
+    ad.photoClear.hidden = true;
+    ad.photoPreview.removeAttribute("src");
   }
 
   function saveDish() {
@@ -1848,7 +1941,8 @@ const CONFIG = {
     var name = ad.name.value.trim();
     var section = addSection === "+" ? ad.newSection.value.trim() : addSection;
     var pass = ad.pass.value.trim();
-    if (!youtubeId(safeUrl(link))) { addMessage("Paste the YouTube link first.", "error"); ad.link.focus(); return; }
+    var video = videoLink(link);
+    if (!video) { addMessage("Paste a YouTube or Instagram video link first.", "error"); ad.link.focus(); return; }
     if (!name) { addMessage("Type the dish name.", "error"); ad.name.focus(); return; }
     if (!section) { addMessage("Pick a section, or type the new section's name.", "error"); return; }
     if (!pass) { addMessage("Type the passcode first.", "error"); ad.pass.focus(); return; }
@@ -1858,14 +1952,17 @@ const CONFIG = {
     addMessage("");
     fetch(CONFIG.VOICE_UPLOAD_URL, {
       method: "POST",
-      body: JSON.stringify({ passcode: pass, action: "addDish", section: section, dish: name, youtube: safeUrl(link), replace: addReplace })
+      body: JSON.stringify({
+        passcode: pass, action: "addDish", section: section, dish: name, youtube: video.url, replace: addReplace,
+        photo: addPhoto ? { mimeType: addPhoto.mimeType, data: addPhoto.data } : null
+      })
     })
       .then(function (res) { return res.json(); })
       .then(function (out) {
         if (out && out.exists) {
           addReplace = true;
           addMessage(out.error, "");
-          ad.save.textContent = "Replace video link";
+          ad.save.textContent = "Replace";
           return;
         }
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
@@ -1876,15 +1973,19 @@ const CONFIG = {
         var key = section.toLowerCase();
         var target = dishSections.filter(function (s) { return s.key === key; })[0];
         if (!target) { target = { label: section, key: key, dishes: [] }; dishSections.push(target); }
-        var url = safeUrl(link);
+        var url = video.url;
+        var picture = out.image ? imageUrl(out.image) : null;
         var existing = target.dishes.filter(function (d) { return d.name.toLowerCase() === name.toLowerCase(); })[0];
-        if (existing) { existing.link = url; existing.videoId = youtubeId(url); }
-        else target.dishes.push({ name: name, link: url, videoId: youtubeId(url), customImage: null, voice: null });
+        if (existing) {
+          existing.link = url;
+          existing.videoId = youtubeId(url);
+          if (picture) existing.customImage = picture;
+        } else target.dishes.push({ name: name, link: url, videoId: youtubeId(url), customImage: picture, voice: null });
         addSection = target.label;
         render();
 
         addMessage(out.replaced
-          ? "Updated the video for " + name + " in " + target.label + "."
+          ? "Updated the link for " + name + " in " + target.label + "."
           : "Added " + name + " to " + target.label + ".", "ok");
         ad.record.dataset.dish = name;
         ad.next.hidden = false;
@@ -1906,6 +2007,7 @@ const CONFIG = {
     ad.link.value = "";
     ad.name.value = "";
     ad.newSection.value = "";
+    clearPhoto();
     if (addSection === "+") addSection = dishSections.length ? dishSections[0].label : "";
     fillAddSections();
     updatePreview();
@@ -1918,17 +2020,32 @@ const CONFIG = {
 
   ad.link.addEventListener("input", updatePreview);
   ad.name.addEventListener("input", function () { addReplace = false; ad.save.textContent = "Add dish"; });
+  function pasteByHand() {
+    ad.link.focus();
+    ad.hint.className = "hint";
+    ad.hint.textContent = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+      ? "Press \u2318V in the box (or press and hold, then Paste)."
+      : "Press Ctrl+V in the box (or press and hold, then Paste).";
+  }
   ad.paste.addEventListener("click", function () {
-    if (!navigator.clipboard || !navigator.clipboard.readText) { ad.link.focus(); return; }
+    if (!navigator.clipboard || !navigator.clipboard.readText) { pasteByHand(); return; }
+    // Laptop browsers often ask permission or never answer; show the keyboard way meanwhile.
+    var answered = false;
+    var waiting = setTimeout(function () { if (!answered) pasteByHand(); }, 1000);
     navigator.clipboard.readText().then(function (text) {
-      ad.link.value = String(text || "").trim();
+      answered = true;
+      clearTimeout(waiting);
+      text = String(text || "").trim();
+      if (!text) { pasteByHand(); return; }
+      ad.link.value = text;
       updatePreview();
       if (!ad.name.value) ad.name.focus();
-    }).catch(function () {
-      ad.link.focus();
-      ad.hint.className = "hint";
-      ad.hint.textContent = "Press and hold in the box, then choose Paste.";
-    });
+    }).catch(function () { answered = true; clearTimeout(waiting); pasteByHand(); });
+  });
+  ad.photo.addEventListener("change", function () { choosePhoto(ad.photo.files && ad.photo.files[0]); });
+  ad.photoClear.addEventListener("click", function () {
+    clearPhoto();
+    if (videoLink(ad.link.value) && videoLink(ad.link.value).kind === "instagram") ad.by.textContent = "Add a photo below so the cook sees a picture.";
   });
   ad.sections.addEventListener("click", function (e) {
     var b = e.target.closest(".chip");
@@ -1939,7 +2056,8 @@ const CONFIG = {
     fillAddSections();
     if (addSection === "+") ad.newSection.focus();
   });
-  ad.save.addEventListener("click", saveDish);
+  // A real form: the button and the Enter key both add the dish.
+  ad.form.addEventListener("submit", function (e) { e.preventDefault(); if (!ad.save.disabled) saveDish(); });
   ad.another.addEventListener("click", function () { resetAddForm(); ad.link.focus(); });
   // Straight on to recording a voice note for the dish just added.
   ad.record.addEventListener("click", function () {
