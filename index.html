@@ -18,20 +18,12 @@
    SETTINGS: this is the only part you need to edit.
    ============================================================ */
 const CONFIG = {
-  // Paste the link from Google Sheets > File > Share > Publish to web > CSV
-  SHEET_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaRZ5A2EKnAYddc4YnMJwi2gyr-cFIIbRKQjuaKb13MsQ1S7rd-x7Iuon-PEvmuDPhIyZVoHV7QcDR/pub?output=csv",
+  // The recipe sheet is private. The page reads the dish list, the day's menu,
+  // voice notes and photos through the helper web app below, which runs as the
+  // owner, so nobody needs (or gets) access to the sheet or Drive.
 
-  // The sheet's normal link (from the browser address bar while it is open).
-  // The page reads the dish list and the day's menu through it, so they are always
-  // current. It is not shown on the page.
-  SHEET_EDIT_URL: "https://docs.google.com/spreadsheets/d/1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ/edit?gid=0#gid=0",
-
-  // Text shown at the top of the page
-  PAGE_TITLE: "Mohna's Recipes",
-  PAGE_SUBTITLE: "",
-
-  // Web app link of the voice notes helper (see README, "Record page").
-  // Turns on the record page at the site address + "#record". Leave as "" to turn it off.
+  // The helper web app (voice-notes-helper.gs). Reading needs nothing; changes
+  // (record, plan, add) only work on the owner's devices, which carry a device key.
   VOICE_UPLOAD_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
 
   // The meals planned on the plan page, in the order the cook sees them under Today.
@@ -51,18 +43,21 @@ const CONFIG = {
 
     /* Palette (Apple's dark system colours). Every colour on the page comes from here.
        Ink #000000  Graphite #1C1C1E  Slate #2C2C2E  Snow #F5F5F7  Ash #98989D
-       Saffron #FF9F0A  Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6  Ember #FF453A */
+       Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6 (Apple system colours)
+       Gold #FFC53D / text #FFCA16, Ember #E5484D / text #FF9592 (Radix Colors amber & red) */
     --ink-black: #000000;
     --graphite: #1C1C1E;
     --slate: #2C2C2E;
     --snow: #F5F5F7;
     --ash: #98989D;
-    --saffron: #FF9F0A;
+    --saffron: #FFCA16;     /* Gold, for text and icons */
+    --gold-fill: #FFC53D;   /* Gold, for filled buttons (dark text on it) */
     --sky: #0A84FF;
     --sun: #FFD60A;
     --leaf: #30D158;
     --indigo: #5E5CE6;
-    --ember: #FF453A;
+    --ember: #FF9592;       /* Ember, for text */
+    --ember-fill: #E5484D;  /* Ember, for filled buttons (white text on it) */
 
     /* Roles */
     --bg: var(--ink-black);
@@ -75,9 +70,10 @@ const CONFIG = {
     --chrome: rgba(22, 22, 24, 0.72);
     --shadow: none;
     --line-strong: rgba(235, 235, 245, 0.45);
-    --on-accent: #000000;   /* text on Saffron/Ember fills */
+    --on-accent: #21201C;   /* text on Gold fills, both modes */
     --accent: var(--saffron);
-    --accent-soft: rgba(255, 159, 10, 0.18);
+    --accent-fill: var(--gold-fill);
+    --accent-soft: rgba(255, 197, 61, 0.14);
 
     --radius: 18px;
     /* One text-size scale for the whole page, largest to smallest:
@@ -99,12 +95,12 @@ const CONFIG = {
       --slate: #FFFFFF;
       --snow: #1C1C1E;
       --ash: #6E6E73;
-      --saffron: #C93400;
+      --saffron: #AB6400;
       --sky: #007AFF;
       --sun: #B25000;
       --leaf: #248A3D;
       --indigo: #3634A3;
-      --ember: #D70015;
+      --ember: #CE2C31;
 
       --bg: #F2F2F7;
       --line: rgba(60, 60, 67, 0.16);
@@ -112,8 +108,8 @@ const CONFIG = {
       --fill: rgba(118, 118, 128, 0.12);
       --chrome: rgba(242, 242, 247, 0.78);
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-      --on-accent: #FFFFFF;
-      --accent-soft: rgba(201, 52, 0, 0.10);
+      --on-accent: #21201C;
+      --accent-soft: rgba(255, 197, 61, 0.22);
     }
   }
 
@@ -163,7 +159,7 @@ const CONFIG = {
   }
   .plan-row .tab-today { flex: 2 1 0; }
   .plan-row .tab-tomorrow { flex: 1 1 0; font-size: var(--fs-body); }
-  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent-fill); color: var(--on-accent); }
   .tab:focus-visible, .tile:focus-visible, .reload:focus-visible {
     outline: 3px solid var(--accent); outline-offset: 3px;
   }
@@ -173,7 +169,7 @@ const CONFIG = {
     border-radius: 14px; border: 1px solid var(--line);
     background: var(--accent-soft); font-size: 1rem;
   }
-  .notice.error { background: rgba(255, 69, 58, 0.16); border-color: transparent; }
+  .notice.error { background: rgba(229, 72, 77, 0.14); border-color: transparent; }
   .notice[hidden] { display: none; }
 
   /* Dish tiles */
@@ -239,7 +235,7 @@ const CONFIG = {
     text-decoration: none; cursor: pointer;
   }
   .voice .icon { font-size: 1.5rem; line-height: 1; }
-  .voice.playing { background: var(--accent); color: var(--on-accent); }
+  .voice.playing { background: var(--accent-fill); color: var(--on-accent); }
   .voice .progress {
     position: absolute; left: 0; bottom: 0; height: 5px; width: 0;
     background: rgba(0, 0, 0, 0.35);
@@ -264,15 +260,15 @@ const CONFIG = {
     border: 2px solid var(--ink); border-radius: 16px; background: var(--card); color: var(--ink);
     font: inherit; font-size: 1.25rem; font-weight: 700; cursor: pointer;
   }
-  .big-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .big-btn.rec { background: var(--ember); border-color: var(--ember); color: var(--on-accent); }
+  .big-btn.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .big-btn.rec { background: var(--ember-fill); border-color: var(--ember-fill); color: #FFFFFF; }
   .big-btn[disabled] { opacity: 0.5; cursor: default; }
   .big-btn[hidden], .recorder audio[hidden], .file-pick[hidden] { display: none; }
   .recorder audio { width: 100%; margin: 0 0 12px; }
   .file-pick { display: block; margin: 4px 0 16px; color: var(--muted); }
   .file-pick input { display: block; margin-top: 6px; max-width: 100%; font: inherit; }
   .rec-msg { margin: 6px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--fill); }
-  .rec-msg.error { background: rgba(255, 69, 58, 0.16); }
+  .rec-msg.error { background: rgba(229, 72, 77, 0.14); }
   .rec-msg.ok { background: rgba(48, 209, 88, 0.16); }
   .rec-msg[hidden] { display: none; }
   /* Plan page */
@@ -281,7 +277,7 @@ const CONFIG = {
     flex: 1 1 0; min-height: 54px; border: 2px solid var(--ink); border-radius: 14px;
     background: var(--card); color: var(--ink); font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer;
   }
-  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .chip[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); }
   .plan-day { margin: -6px 0 16px; font-size: 1.15rem; font-weight: 700; color: var(--accent); }
   .plan-group { margin: 0 0 16px; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
   .plan-group legend { padding: 0 6px; font-size: 1.2rem; font-weight: 800; }
@@ -432,7 +428,7 @@ const CONFIG = {
     font-size: var(--fs-heading); font-weight: 700; letter-spacing: -0.01em;
   }
   .plan-row .tab-tomorrow { font-size: var(--fs-body); }
-  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent-fill); color: var(--on-accent); }
 
   /* Cards float on a soft shadow instead of an outline */
   .card { border: 0; border-radius: var(--radius); box-shadow: var(--shadow); }
@@ -448,10 +444,10 @@ const CONFIG = {
     min-height: 56px; border-top: 0.5px solid var(--line);
     background: var(--accent-soft); color: var(--accent); font-weight: 600;
   }
-  .voice.playing { background: var(--accent); color: var(--on-accent); }
+  .voice.playing { background: var(--accent-fill); color: var(--on-accent); }
 
   .notice { border: 0; background: var(--accent-soft); }
-  .notice.error { background: rgba(255, 59, 48, 0.14); }
+  .notice.error { background: rgba(229, 72, 77, 0.14); }
 
   /* Headings and badges */
   .list-head h2, .meal-title { letter-spacing: -0.01em; }
@@ -482,10 +478,10 @@ const CONFIG = {
     outline: none; box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 1.5px var(--accent);
   }
   .big-btn { border: 0; border-radius: 14px; background: var(--fill); color: var(--ink); font-weight: 600; min-height: 56px; }
-  .big-btn.primary { background: var(--accent); color: var(--on-accent); }
-  .big-btn.rec { background: var(--ember); color: var(--on-accent); }
+  .big-btn.primary { background: var(--accent-fill); color: var(--on-accent); }
+  .big-btn.rec { background: var(--ember-fill); color: #FFFFFF; }
   .chip { border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font-weight: 600; }
-  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+  .chip[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); }
   .chip.new { border: 1.5px dashed var(--line); background: transparent; }
   .paste-btn { border: 0; border-radius: 12px; background: var(--fill); color: var(--accent); font-weight: 600; }
   .plan-group { border: 0; border-radius: 16px; box-shadow: var(--shadow); }
@@ -494,7 +490,7 @@ const CONFIG = {
   .check { border-bottom: 0.5px solid var(--line); }
   .video-preview { border: 0; box-shadow: var(--shadow); }
   .rec-msg { background: var(--fill); }
-  .rec-msg.error { background: rgba(255, 59, 48, 0.14); }
+  .rec-msg.error { background: rgba(229, 72, 77, 0.14); }
   .rec-msg.ok { background: rgba(52, 199, 89, 0.16); }
   .reload { border: 0; border-radius: 12px; background: var(--fill); color: var(--accent); font-weight: 600; }
   .edit-link a, .back { color: var(--accent); text-decoration: none; font-weight: 500; }
@@ -532,7 +528,7 @@ const CONFIG = {
     <div class="brand">
       <h1 id="title">Recipes</h1>
       <svg class="cat" viewBox="2 2 54 59" aria-hidden="true" focusable="false">
-        <g fill="#FF9F0A">
+        <g fill="#FFC53D">
           <path d="M14 60 C8 50 12 34 24 30 L34 26 L44 28 C46 40 47 52 46 60 Z"/>
           <circle cx="41" cy="20" r="10"/>
           <ellipse cx="48.5" cy="23" rx="4.5" ry="3.6"/>
@@ -540,8 +536,8 @@ const CONFIG = {
           <path d="M42 11 L49.5 4 L50.5 17 Z"/>
           <path d="M16 59 C4 59 2 48 6 40 C8 36 11 37 9.5 41 C7 47 8 55 17 55 Z"/>
         </g>
-        <path d="M33 27.5 Q40 32 48 27" fill="none" stroke="#FFD60A" stroke-width="2.6" stroke-linecap="round"/>
-        <circle cx="41" cy="33" r="3" fill="#FF453A"/>
+        <path d="M33 27.5 Q40 32 48 27" fill="none" stroke="#E5484D" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="41" cy="33" r="3" fill="#FFCA16"/>
         <path d="M38 33 A3 3 0 0 0 44 33 Z" fill="#F5F5F7"/>
         <path d="M38 33 H44" stroke="#000000" stroke-width="0.8"/>
       </svg>
@@ -558,14 +554,17 @@ const CONFIG = {
   <p class="notice" id="notice" hidden></p>
   <main><ul class="grid" id="grid"></ul></main>
 
+  <section class="recorder" id="notSetUp" hidden>
+    <h2>This device can't make changes</h2>
+    <p class="help">Planning the menu, adding dishes and recording voice notes work only on your own phones and laptops. Open your Home Suite setup link once on this device, then come back.</p>
+    <a class="back" href="#">&larr; Back to recipes</a>
+  </section>
+
   <section class="recorder" id="recorder" hidden>
     <h2>Record a voice note</h2>
     <p class="help">Pick the dish, record, listen back, then save. It shows on the recipe page straight away.</p>
     <label class="field">Dish
       <select id="recDish"></select>
-    </label>
-    <label class="field">Passcode
-      <input id="recPass" type="password" autocomplete="current-password">
     </label>
     <button class="big-btn rec" id="recBtn" type="button">&#9679; Record</button>
     <audio id="recPreview" controls hidden></audio>
@@ -609,9 +608,6 @@ const CONFIG = {
       <div class="chips chips-wrap" id="addSections" style="margin-top:6px"></div>
       <input id="addNewSection" type="text" autocomplete="off" placeholder="New section, for example: Snacks" hidden>
     </div>
-    <label class="field">Passcode
-      <input id="addPass" type="password" autocomplete="current-password">
-    </label>
     <button class="big-btn primary" id="addSave" type="submit">Add dish</button>
     </form>
     <p class="rec-msg" id="addMsg" hidden></p>
@@ -637,9 +633,6 @@ const CONFIG = {
     <label class="field">Note for the cook (optional)
       <textarea id="planNote" rows="3" placeholder="For example: guests coming, make it less spicy"></textarea>
     </label>
-    <label class="field">Passcode
-      <input id="planPass" type="password" autocomplete="current-password">
-    </label>
     <button class="big-btn primary" id="planSave" type="button">Save menu</button>
     <p class="rec-msg" id="planMsg" hidden></p>
     <a class="back" href="#">&larr; Back to recipes</a>
@@ -648,9 +641,6 @@ const CONFIG = {
   <footer>
     <div id="status"></div>
     <button class="reload" id="reload" type="button">Reload list</button>
-    <p class="edit-link" id="planWrap" hidden><a href="#plan">Plan the menu</a></p>
-    <p class="edit-link" id="addWrap" hidden><a href="#add">Add a dish</a></p>
-    <p class="edit-link" id="recordWrap" hidden><a href="#record">Record voice notes</a></p>
   </footer>
 </div>
 
@@ -729,6 +719,7 @@ const CONFIG = {
   function store(key, value) {
     try {
       if (value === undefined) return localStorage.getItem(key);
+      if (value === null) { localStorage.removeItem(key); return null; }
       localStorage.setItem(key, value);
     } catch (e) { /* private mode or blocked storage: carry on without it */ }
     return null;
@@ -738,26 +729,6 @@ const CONFIG = {
     el.notice.textContent = text || "";
     el.notice.hidden = !text;
     el.notice.classList.toggle("error", !!isError);
-  }
-
-  /* Accepts the "Publish to web" link in any of its forms, or a normal
-     share link, and returns a link that gives CSV. */
-  function normalizeSheetUrl(raw) {
-    var url = String(raw || "").trim();
-    if (!/^https?:\/\//i.test(url)) return null;
-    var gid = (url.match(/[#&?]gid=(\d+)/) || [])[1];
-
-    var published = url.match(/\/spreadsheets\/d\/e\/([\w-]+)/);
-    if (published) {
-      return "https://docs.google.com/spreadsheets/d/e/" + published[1] +
-             "/pub?output=csv" + (gid ? "&single=true&gid=" + gid : "");
-    }
-    var normal = url.match(/\/spreadsheets\/d\/([\w-]+)/);
-    if (normal) {
-      return "https://docs.google.com/spreadsheets/d/" + normal[1] +
-             "/gviz/tq?tqx=out:csv&headers=1" + (gid ? "&gid=" + gid : "");
-    }
-    return url; // any other CSV link
   }
 
   function parseCSV(text) {
@@ -825,6 +796,11 @@ const CONFIG = {
     } catch (e) { return null; }
   }
 
+  function driveFileId(raw) {
+    var m = String(raw || "").match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=|thumbnail\?(?:.*&)?id=)([\w-]+)/);
+    return m ? m[1] : null;
+  }
+
   /* Google Drive share links do not work as pictures directly; convert them. */
   function imageUrl(raw) {
     var url = safeUrl(raw);
@@ -875,9 +851,10 @@ const CONFIG = {
       var link = safeUrl(r[cols.link]);
       var vid = youtubeId(link);
       var custom = cols.image !== undefined ? imageUrl(r[cols.image]) : null;
+      var customId = cols.image !== undefined ? driveFileId(r[cols.image]) : null;
       var voicePage = cols.voice !== undefined ? safeUrl(r[cols.voice]) : null;
       byKey[key].dishes.push({
-        name: name, link: link, videoId: vid, customImage: custom,
+        name: name, link: link, videoId: vid, customImage: custom, customImageId: customId,
         voice: voicePage ? { src: audioUrl(voicePage), page: voicePage } : null
       });
     });
@@ -905,6 +882,24 @@ const CONFIG = {
     return box;
   }
 
+  /* Photos in the private "Recipe photos" folder come through the helper (once per visit).
+     A Drive picture shared some other way still loads directly. */
+  var photoCache = {};
+  function privatePhoto(id) {
+    if (!photoCache[id]) {
+      var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
+      photoCache[id] = !helper ? Promise.reject(new Error("no helper")) :
+        fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "photo=" + encodeURIComponent(id), { credentials: "omit" })
+          .then(function (res) { return res.json(); })
+          .then(function (out) {
+            if (!out || !out.ok || !out.data) throw new Error("not a recipe photo");
+            return "data:" + (out.mimeType || "image/jpeg") + ";base64," + out.data;
+          });
+      photoCache[id].catch(function () { delete photoCache[id]; });
+    }
+    return photoCache[id];
+  }
+
   function buildThumb(dish) {
     var thumb = document.createElement("div");
     thumb.className = "thumb";
@@ -929,7 +924,13 @@ const CONFIG = {
           sharp.src = "https://i.ytimg.com/vi/" + dish.videoId + "/maxresdefault.jpg";
         }, { once: true });
       }
-      img.src = src;
+      if (dish.customImageId) {
+        privatePhoto(dish.customImageId)
+          .then(function (dataUrl) { img.src = dataUrl; })
+          .catch(function () { img.src = src; });
+      } else {
+        img.src = src;
+      }
       thumb.appendChild(img);
     } else {
       thumb.appendChild(placeholder(dish.name));
@@ -1286,7 +1287,7 @@ const CONFIG = {
     renderedDay = today;
     var todaySection = planSection(today, "Today's menu", "__today");
     // Today's menu always has its button once the sheet has a menu, even before anything is planned.
-    if (!todaySection && menuUrl()) {
+    if (!todaySection) {
       todaySection = { label: "Today's menu", key: "__today", dishes: [], plan: { date: today, groups: [], notes: [] } };
     }
     var planned = [todaySection, planSection(addDays(today, 1), "Tomorrow", "__tomorrow")].filter(Boolean);
@@ -1334,61 +1335,27 @@ const CONFIG = {
 
   /* ---------- load ---------- */
 
-  /* Where to read the list from, best first. The sheet itself (through its edit
-     link) is always current. The published copy can lag by minutes, and
-     Google's servers sometimes hand out an older version of it. */
-  function sheetSources() {
-    var list = [];
-    var live = /\/spreadsheets\/d\/(?!e\/)/.test(CONFIG.SHEET_EDIT_URL || "")
-      ? normalizeSheetUrl(CONFIG.SHEET_EDIT_URL) : null;
-    var published = normalizeSheetUrl(CONFIG.SHEET_CSV_URL);
-    if (live) list.push(live);
-    if (published && published !== live) list.push(published);
-    return list;
-  }
-
-  function fetchList(urls) {
-    var url = urls[0];
-    var bust = (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
-    return fetch(url + bust, { cache: "no-store", credentials: "omit" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("The sheet could not be opened (error " + res.status + "). Check that it is published to the web.");
-        return res.text();
-      })
-      .then(function (text) {
-        var built = buildSections(text);
+  /* The dish list and the day's menu come from the helper web app, which reads the
+     private sheet as its owner. Nothing here needs the sheet to be shared. */
+  function fetchRecipes() {
+    var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
+    return fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "recipes=1&t=" + Date.now(),
+                 { cache: "no-store", credentials: "omit" })
+      .then(function (res) { return res.json(); })
+      .then(function (out) {
+        if (!out || !out.ok) throw new Error((out && out.error) || "Could not load the list.");
+        var built = buildSections(out.dishes || "");
         if (!built.length) throw new Error("The sheet has no dishes to show yet.");
-        return { text: text, sections: built };
-      })
-      .catch(function (err) {
-        if (urls.length > 1) return fetchList(urls.slice(1));
-        throw err;
+        return { text: out.dishes, sections: built, menuText: out.menu || "" };
       });
   }
 
-  // The Menu tab of the same sheet; null when there is no edit link to find it by.
-  function menuUrl() {
-    var m = String(CONFIG.SHEET_EDIT_URL || "").match(/\/spreadsheets\/d\/(?!e\/)([\w-]+)/);
-    return m ? "https://docs.google.com/spreadsheets/d/" + m[1] +
-               "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(CONFIG.MENU_TAB || "Menu") : null;
-  }
-
-  // Resolves to the menu text, or null if it could not be read (the old plan is then kept).
-  function fetchMenu() {
-    var url = menuUrl();
-    if (!url) return Promise.resolve(null);
-    return fetch(url + "&t=" + Date.now(), { cache: "no-store", credentials: "omit" })
-      .then(function (res) { return res.ok ? res.text() : null; })
-      .catch(function () { return null; });
-  }
-
   function load() {
-    var sources = sheetSources();
     lastLoad = Date.now();
 
-    if (!sources.length) {
+    if (!safeUrl(CONFIG.VOICE_UPLOAD_URL)) {
       render(buildSections(SAMPLE_CSV));
-      showNotice("Sample list. Paste your Google Sheet link into index.html to show your own dishes.");
+      showNotice("Sample list. Put the helper web app address into index.html to show your own dishes.");
       setStatus("");
       return;
     }
@@ -1403,16 +1370,10 @@ const CONFIG = {
 
     setStatus("Loading...");
 
-    var menuRequest = fetchMenu();
-    fetchList(sources)
+    fetchRecipes()
       .then(function (got) {
-        return menuRequest.then(function (menuText) { got.menuText = menuText; return got; });
-      })
-      .then(function (got) {
-        if (got.menuText !== null) {
-          menuRows = parseMenu(got.menuText);
-          store(MENU_CACHE_KEY, got.menuText);
-        }
+        menuRows = parseMenu(got.menuText);
+        store(MENU_CACHE_KEY, got.menuText);
         render(got.sections);
         store(CACHE_KEY, got.text);
         showNotice("");
@@ -1427,7 +1388,7 @@ const CONFIG = {
           el.tabsBar.hidden = true;
           var msg = err && err.message && !/fetch|network|load/i.test(err.message)
             ? err.message
-            : "Could not load the list. Check the internet connection and the sheet link.";
+            : "Could not load the list. Check the internet connection.";
           // Google refuses to send the sheet to a page opened by double-clicking the file.
           if (location.protocol === "file:") {
             msg = "This page was opened as a file, and Google does not send the sheet to files. " +
@@ -1441,11 +1402,21 @@ const CONFIG = {
 
   /* ---------- record page: site address + #record ---------- */
 
-  var PASS_KEY = "recipe-page-passcode-v1";
+  /* The owner's device key: saved once from the setup link (Home Suite), never typed.
+     Without it the page only reads. */
+  (function takeSetupLink() {
+    var m = location.hash.match(/^#setup=([\w-]{20,})$/);
+    if (!m) return;
+    try { localStorage.setItem("home-suite-device-key-v1", m[1]); } catch (e) { /* storage blocked */ }
+    history.replaceState(null, "", location.pathname + location.search);
+  })();
+  var DEVICE_KEY = "home-suite-device-key-v1";
+  store("recipe-page-passcode-v1", null);   // the old passcode is no longer used
+  function deviceKey() { return store(DEVICE_KEY) || ""; }
+  function forgetKey() { store(DEVICE_KEY, null); showView(); }
   var rc = {
     page: document.getElementById("recorder"),
     dish: document.getElementById("recDish"),
-    pass: document.getElementById("recPass"),
     btn: document.getElementById("recBtn"),
     preview: document.getElementById("recPreview"),
     save: document.getElementById("recSave"),
@@ -1554,9 +1525,9 @@ const CONFIG = {
 
   function saveRecording() {
     var dish = rc.dish.value;
-    var pass = rc.pass.value.trim();
+    var key = deviceKey();
     if (!dish) { recMessage("Pick a dish first.", "error"); return; }
-    if (!pass) { recMessage("Type the passcode first.", "error"); rc.pass.focus(); return; }
+    if (!key) { showView(); return; }
     if (!recording.blob) return;
 
     rc.save.disabled = true;
@@ -1569,13 +1540,12 @@ const CONFIG = {
       // Sent as plain text so the browser can talk to Google directly.
       fetch(CONFIG.VOICE_UPLOAD_URL, {
         method: "POST",
-        body: JSON.stringify({ passcode: pass, dish: dish, mimeType: recording.blob.type, data: data })
+        body: JSON.stringify({ key: key, dish: dish, mimeType: recording.blob.type, data: data })
       })
         .then(function (res) { return res.json(); })
         .then(function (out) {
+          if (keyRejected(out)) return;
           if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
-          store(PASS_KEY, pass);
-          pl.pass.value = ad.pass.value = pass;
           resetRecorder();
           recMessage("Saved for " + dish + ". Open the recipe page (or tap Reload list) to see it.", "ok");
         })
@@ -1613,7 +1583,6 @@ const CONFIG = {
     dayLabel: document.getElementById("planDayLabel"),
     dishes: document.getElementById("planDishes"),
     note: document.getElementById("planNote"),
-    pass: document.getElementById("planPass"),
     save: document.getElementById("planSave"),
     msg: document.getElementById("planMsg")
   };
@@ -1725,9 +1694,9 @@ const CONFIG = {
 
   function savePlan() {
     var date = pl.date.value;
-    var pass = pl.pass.value.trim();
+    var key = deviceKey();
     if (!date) { planMessage("Pick a date first.", "error"); return; }
-    if (!pass) { planMessage("Type the passcode first.", "error"); pl.pass.focus(); return; }
+    if (!key) { showView(); return; }
 
     var items = [];
     Array.prototype.forEach.call(pl.dishes.querySelectorAll(".plan-group"), function (box) {
@@ -1747,13 +1716,12 @@ const CONFIG = {
     planMessage("");
     fetch(CONFIG.VOICE_UPLOAD_URL, {
       method: "POST",
-      body: JSON.stringify({ passcode: pass, action: "plan", date: date, items: items, note: note })
+      body: JSON.stringify({ key: key, action: "plan", date: date, items: items, note: note })
     })
       .then(function (res) { return res.json(); })
       .then(function (out) {
+        if (keyRejected(out)) return;
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
-        store(PASS_KEY, pass);
-        rc.pass.value = ad.pass.value = pass;
         // Show the new plan straight away; the next load reads it back from the sheet.
         menuRows = menuRows.filter(function (r) { return r.date !== date; });
         items.forEach(function (it, i) {
@@ -1805,7 +1773,6 @@ const CONFIG = {
     name: document.getElementById("addName"),
     sections: document.getElementById("addSections"),
     newSection: document.getElementById("addNewSection"),
-    pass: document.getElementById("addPass"),
     save: document.getElementById("addSave"),
     msg: document.getElementById("addMsg"),
     next: document.getElementById("addNext"),
@@ -1821,11 +1788,14 @@ const CONFIG = {
   var addPhoto = null;      // { mimeType, data } of the chosen photo, made small
 
   // A YouTube or Instagram link, tidied up; null when it is neither.
+  // Share sheets often copy extra words around the link; only the link is used.
   function videoLink(raw) {
-    var url = safeUrl(raw);
+    var text = String(raw || "").trim();
+    var found = text.match(/https?:\/\/\S+/i) || text.match(/(?:www\.|m\.)?(?:youtube\.com|youtu\.be|instagram\.com|instagr\.am)\/\S+/i);
+    var url = safeUrl(found ? found[0].replace(/[),.;!]+$/, "") : text);
     var yt = youtubeId(url);
     if (yt) return { kind: "youtube", id: yt, url: url };
-    var m = String(url || "").match(/instagram\.com\/(?:[\w.]+\/)?(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i);
+    var m = String(url || "").match(/(?:instagram\.com|instagr\.am)\/(?:[\w.]+\/)?(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i);
     if (m) return { kind: "instagram", id: m[2], url: "https://www.instagram.com/" + (m[1].toLowerCase() === "p" ? "p" : "reel") + "/" + m[2] + "/" };
     return null;
   }
@@ -1859,6 +1829,10 @@ const CONFIG = {
   function updatePreview() {
     var raw = ad.link.value.trim();
     var video = videoLink(raw);
+    if (video && raw !== video.url && !/^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be|youtube\.com\/shorts)/i.test(raw)) {
+      ad.link.value = video.url;   // e.g. an Instagram link without its tracking part
+      raw = video.url;
+    }
     addReplace = false;
     ad.save.textContent = "Add dish";
     if (!raw) { ad.preview.hidden = true; ad.hint.textContent = ""; previewFor = ""; return; }
@@ -1940,12 +1914,12 @@ const CONFIG = {
     var link = ad.link.value.trim();
     var name = ad.name.value.trim();
     var section = addSection === "+" ? ad.newSection.value.trim() : addSection;
-    var pass = ad.pass.value.trim();
+    var key = deviceKey();
     var video = videoLink(link);
     if (!video) { addMessage("Paste a YouTube or Instagram video link first.", "error"); ad.link.focus(); return; }
     if (!name) { addMessage("Type the dish name.", "error"); ad.name.focus(); return; }
     if (!section) { addMessage("Pick a section, or type the new section's name.", "error"); return; }
-    if (!pass) { addMessage("Type the passcode first.", "error"); ad.pass.focus(); return; }
+    if (!key) { showView(); return; }
 
     ad.save.disabled = true;
     ad.save.textContent = "Saving...";
@@ -1953,7 +1927,7 @@ const CONFIG = {
     fetch(CONFIG.VOICE_UPLOAD_URL, {
       method: "POST",
       body: JSON.stringify({
-        passcode: pass, action: "addDish", section: section, dish: name, youtube: video.url, replace: addReplace,
+        key: key, action: "addDish", section: section, dish: name, youtube: video.url, replace: addReplace,
         photo: addPhoto ? { mimeType: addPhoto.mimeType, data: addPhoto.data } : null
       })
     })
@@ -1965,9 +1939,8 @@ const CONFIG = {
           ad.save.textContent = "Replace";
           return;
         }
+        if (keyRejected(out)) return;
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
-        store(PASS_KEY, pass);
-        rc.pass.value = pl.pass.value = pass;
 
         // Show it on the page straight away; the next load reads it back from the sheet.
         var key = section.toLowerCase();
@@ -1975,12 +1948,14 @@ const CONFIG = {
         if (!target) { target = { label: section, key: key, dishes: [] }; dishSections.push(target); }
         var url = video.url;
         var picture = out.image ? imageUrl(out.image) : null;
+        var pictureId = out.image ? driveFileId(out.image) : null;
+        if (pictureId && addPhoto) photoCache[pictureId] = Promise.resolve(addPhoto.preview);
         var existing = target.dishes.filter(function (d) { return d.name.toLowerCase() === name.toLowerCase(); })[0];
         if (existing) {
           existing.link = url;
           existing.videoId = youtubeId(url);
-          if (picture) existing.customImage = picture;
-        } else target.dishes.push({ name: name, link: url, videoId: youtubeId(url), customImage: picture, voice: null });
+          if (picture) { existing.customImage = picture; existing.customImageId = pictureId; }
+        } else target.dishes.push({ name: name, link: url, videoId: youtubeId(url), customImage: picture, customImageId: pictureId, voice: null });
         addSection = target.label;
         render();
 
@@ -2065,9 +2040,18 @@ const CONFIG = {
     setTimeout(function () { if (dish) rc.dish.value = dish; }, 0);
   });
 
+  // Any "not set up" answer from the helper: the saved key is wrong or old.
+  function keyRejected(out) {
+    if (out && out.needsSetup) { forgetKey(); return true; }
+    return false;
+  }
+
   function showView() {
     var tools = !!safeUrl(CONFIG.VOICE_UPLOAD_URL);
     var view = tools && /^#(record|plan|add)$/.test(location.hash) ? location.hash.slice(1) : "";
+    var locked = !!view && !deviceKey();
+    document.getElementById("notSetUp").hidden = !locked;
+    if (locked) view = "locked";
     if (view !== "record" && recording.media && recording.media.state === "recording") recording.media.stop();
     if (view) stopVoice();
     document.body.classList.toggle("tool-mode", !!view);
@@ -2079,13 +2063,6 @@ const CONFIG = {
     window.scrollTo(0, 0);
   }
 
-  if (safeUrl(CONFIG.VOICE_UPLOAD_URL)) {
-    document.getElementById("recordWrap").hidden = false;
-    document.getElementById("planWrap").hidden = false;
-    document.getElementById("addWrap").hidden = false;
-    rc.pass.value = store(PASS_KEY) || "";
-    pl.pass.value = ad.pass.value = rc.pass.value;
-  }
 
   // A page left open overnight moves on to the new day's menu when it is looked at again.
   document.addEventListener("visibilitychange", function () {
@@ -2104,7 +2081,7 @@ const CONFIG = {
   // Exposed for testing only.
   window.__recipePage = {
     parseCSV: parseCSV, buildSections: buildSections, youtubeId: youtubeId,
-    normalizeSheetUrl: normalizeSheetUrl, imageUrl: imageUrl, audioUrl: audioUrl
+    imageUrl: imageUrl, audioUrl: audioUrl
   };
 
   load();

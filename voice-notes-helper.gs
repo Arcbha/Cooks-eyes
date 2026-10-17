@@ -16,12 +16,15 @@
  * 2. The "Recipe page > Link voice notes" menu in the sheet links sound files
  *    you upload to the folder yourself, matched by file name (e.g. "Poha.m4a").
  *
- * Setup: in the sheet, Extensions > Apps Script, paste this whole file in place
- * of what is there, change the passcode below, click Save. See README.md.
+ * Setup: deployed from this file (see CLAUDE.md, "Updating the helper script"),
+ * with the owner's device key put in place of "change-me" below at that moment.
  */
 
-// The passcode typed on the record page. Change it to something only you know.
-var RECORDER_PASSCODE = "change-me";
+// The owner's device key. Nobody types it: each of the owner's phones and laptops
+// gets it once from a setup link (site address + "home/#setup=<key>") and keeps it.
+// The real key is put in only when the script is deployed; it is never stored in
+// the public code. Anything that changes data needs it; the cook's page does not.
+var OWNER_KEY = "change-me";
 
 var VOICE_FOLDER_NAME = "Recipe voice notes";
 var PHOTO_FOLDER_NAME = "Recipe photos";
@@ -81,7 +84,6 @@ function linkVoiceNotes() {
     var current = voiceCol < data[r].length ? String(data[r][voiceCol]).trim() : "";
     if (current) continue;
     var file = files[name];
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     sheet.getRange(r + 1, voiceCol + 1).setValue(file.getUrl());
     var shown = String(data[r][cols.name]).trim();
     if (linked.indexOf(shown) < 0) linked.push(shown);
@@ -104,16 +106,17 @@ function linkVoiceNotes() {
 
 /* ---------------- record page ---------------- */
 
-// The record page sends: { passcode, dish, mimeType, data (the recording, base64) }.
+// Every change is a POST carrying { key, action, ... }. The record page sends:
+// { key, dish, mimeType, data (the recording, base64) }.
 function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
     var req = JSON.parse(e.postData.contents);
-    if (!RECORDER_PASSCODE || RECORDER_PASSCODE === "change-me") {
-      return reply({ ok: false, error: "Set a passcode in the helper script first (RECORDER_PASSCODE), then deploy again." });
+    if (!OWNER_KEY || OWNER_KEY === "change-me") {
+      return reply({ ok: false, needsSetup: true, error: "The helper script has no device key yet." });
     }
-    if (String(req.passcode || "") !== RECORDER_PASSCODE) {
-      return reply({ ok: false, error: "Wrong passcode." });
+    if (String(req.key || "") !== OWNER_KEY) {
+      return reply({ ok: false, needsSetup: true, error: "This device is not set up for changes. Open your Home Suite setup link on it once." });
     }
     if (req.action === "plan") {
       lock.waitLock(20000);
@@ -124,6 +127,7 @@ function doPost(e) {
       return addDish(req);
     }
     if (req.action === "notifySetup") return notifySetup(req);
+    if (req.action === "lockDown") return lockDown();
     if (/^todo/.test(String(req.action || ""))) {
       lock.waitLock(20000);
       return todoAction(req);
@@ -155,8 +159,8 @@ function doPost(e) {
       if (clean(o.getName().replace(/\.[^.]+$/, "")) === clean(dish)) o.setTrashed(true);
     }
 
+    // Kept private: the recipe page plays it through this script (doGet).
     var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(req.data), type, fileName));
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     rows.forEach(function (row) { sheet.getRange(row + 1, voiceCol + 1).setValue(file.getUrl()); });
     SpreadsheetApp.flush();
 
@@ -170,7 +174,7 @@ function doPost(e) {
 
 /* ---------------- add page ---------------- */
 
-// The add page sends: { passcode, action: "addDish", section, dish, youtube, replace,
+// The add page sends: { key, action: "addDish", section, dish, youtube, replace,
 // photo: { mimeType, data } (optional) }. "youtube" is the video link: YouTube or
 // Instagram. Adds a row to the dish list. If that dish is already in that section,
 // it asks first, and with replace: true swaps in the new link (and photo) instead.
@@ -230,8 +234,8 @@ function savePhoto(sheet, header, cols, rowNumber, dish, photo) {
     if (clean(o.getName().replace(/\.[^.]+$/, "")) === clean(dish)) o.setTrashed(true);
   }
   var ending = type === "image/png" ? ".png" : type === "image/webp" ? ".webp" : ".jpg";
+  // Kept private: the recipe page shows it through this script (doGet).
   var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(photo.data), type, dish + ending));
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   var col = cols.image;
   if (col < 0) {
     col = sheet.getLastColumn();
@@ -267,7 +271,7 @@ var TODO_HEADERS = ["ID", "List", "Task", "Done", "Added", "Done at"];
 var LIST_SHEET_NAME = "Lists";
 var LIST_HEADERS = ["Name", "Type", "Icon", "Text", "Updated"];
 
-// The to-do page sends { passcode, action, ... } with action one of:
+// The to-do page sends { key, action, ... } with action one of:
 //   "todos" (just read), "todoAdd" { id, list, task }, "todoSet" { id, done },
 //   "todoDelete" { id }, "todoClearDone" { list },
 //   "todoListAdd" { name, type: "check" or "note", icon },
@@ -356,13 +360,14 @@ function readLists(sheet) {
     .map(function (v) {
       return {
         name: String(v[0]).trim(), type: String(v[1]) === "note" ? "note" : "check", icon: String(v[2] || ""),
-        text: String(v[3] || ""), updated: v[4] instanceof Date ? v[4].getTime() : 0
+        text: String(v[3] || ""), updated: isDate(v[4]) ? v[4].getTime() : 0
       };
     });
 }
 
 /* ---------------- notifications (ntfy) ---------------- */
 
+// <external>
 // Sends "New in Things to order: Milk" to every phone subscribed to the channel.
 // A failed notification never stops the to-do from being saved.
 function notifyNewTodo(list, task) {
@@ -379,7 +384,7 @@ function notifyNewTodo(list, task) {
   } catch (e) { /* no notification this time */ }
 }
 
-// { passcode, action: "notifySetup", topic, test } sets the private channel name
+// { key, action: "notifySetup", topic, test } sets the private channel name
 // (letters, numbers, - and _; at least 12) and can send a test notification.
 function notifySetup(req) {
   var topic = String(req.topic || "").trim();
@@ -395,9 +400,31 @@ function authorizeNotifications() {
   UrlFetchApp.fetch("https://ntfy.sh/v1/health");
 }
 
+// Turns off "Publish to web" for the recipe sheet (part of lockDown).
+function unpublishSheet() {
+  try {
+    var api = "https://www.googleapis.com/drive/v3/files/" + SHEET_ID + "/revisions";
+    var auth = { Authorization: "Bearer " + ScriptApp.getOAuthToken() };
+    var list = JSON.parse(UrlFetchApp.fetch(api + "?fields=revisions(id,published)", { headers: auth }).getContentText());
+    var n = 0;
+    (list.revisions || []).forEach(function (r) {
+      if (!r.published) return;
+      UrlFetchApp.fetch(api + "/" + r.id, {
+        method: "patch", contentType: "application/json", headers: auth,
+        payload: JSON.stringify({ published: false, publishAuto: false }), muteHttpExceptions: true
+      });
+      n++;
+    });
+    return "publish to web: " + (n ? "turned off" : "was already off");
+  } catch (e) {
+    return "publish to web: could not change it here (" + e.message + ")";
+  }
+}
+// </external>
+
 /* ---------------- plan page ---------------- */
 
-// The plan page sends: { passcode, action: "plan", date: "2026-10-10",
+// The plan page sends: { key, action: "plan", date: "2026-10-10",
 // items: [{ meal, dish }], note }. Replaces that date's plan in the Menu tab.
 function savePlan(req) {
   var date = String(req.date || "").trim();
@@ -443,7 +470,7 @@ function savePlan(req) {
 
 // A date cell as "yyyy-mm-dd", whether it holds text or a real date.
 function planDate(v) {
-  if (v instanceof Date) return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  if (isDate(v)) return Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd");
   var s = String(v || "").trim();
   var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if (m) return m[1] + "-" + ("0" + m[2]).slice(-2) + "-" + ("0" + m[3]).slice(-2);
@@ -452,32 +479,78 @@ function planDate(v) {
   return s;
 }
 
-// The recipe page asks for a voice note with "?voice=<Drive file id>" and gets the
-// sound back, because Google Drive will not play its files inside other pages.
-// Only files in the voice notes folder are handed out.
-// Opening the web app address on its own just confirms it is running.
+// Reading, for the recipe page and Home (no key needed: it is what the cook's page shows):
+//   ?recipes=1      the dish list and the Menu tab, as CSV text, so the sheet itself
+//                   can stay private
+//   ?voice=<id>     a voice note from the voice notes folder
+//   ?photo=<id>     a dish photo from the photos folder
+// Only files inside those two folders are ever handed out.
 function doGet(e) {
-  var id = e && e.parameter && e.parameter.voice;
-  if (!id) return reply({ ok: true, message: "Voice note helper is running." });
+  var p = (e && e.parameter) || {};
   try {
+    if (p.recipes) return reply({ ok: true, dishes: dishesCsv(), menu: menuCsv() });
+    var id = p.voice || p.photo;
+    if (!id) return reply({ ok: true, message: "Voice note helper is running." });
     var file = DriveApp.getFileById(id);
-    if (!inVoiceFolder(file)) {
-      return reply({ ok: false, error: 'This file is not in the "' + VOICE_FOLDER_NAME + '" folder.' });
+    var folderName = p.voice ? VOICE_FOLDER_NAME : PHOTO_FOLDER_NAME;
+    if (!inFolder(file, folderName)) {
+      return reply({ ok: false, error: 'This file is not in the "' + folderName + '" folder.' });
     }
     var blob = file.getBlob();
     return reply({ ok: true, mimeType: blob.getContentType(), data: Utilities.base64Encode(blob.getBytes()) });
   } catch (err) {
-    return reply({ ok: false, error: "Voice note not found." });
+    return reply({ ok: false, error: p.recipes ? "Could not read the recipe sheet." : "File not found." });
   }
 }
 
-function inVoiceFolder(file) {
-  var folderId = voiceFolder().getId();
+function dishesCsv() {
+  var sheet = dishSheet();
+  return sheet ? toCsv(sheet.getDataRange().getDisplayValues()) : "";
+}
+
+function menuCsv() {
+  var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(MENU_SHEET_NAME);
+  if (!sheet) return "";
+  return toCsv(sheet.getDataRange().getValues().map(function (row, i) {
+    return i === 0 ? row : [planDate(row[0])].concat(row.slice(1));
+  }));
+}
+
+function toCsv(rows) {
+  return rows.map(function (row) {
+    return row.map(function (v) { return '"' + String(v === null || v === undefined ? "" : v).replace(/"/g, '""') + '"'; }).join(",");
+  }).join("\n");
+}
+
+function inFolder(file, folderName) {
+  var folderId = namedFolder(folderName).getId();
   var parents = file.getParents();
   while (parents.hasNext()) {
     if (parents.next().getId() === folderId) return true;
   }
   return false;
+}
+
+// One-time privacy switch (POST { key, action: "lockDown" }): the recipe sheet and
+// every voice note and photo stop being readable by link. The pages keep working,
+// because they read everything through this script.
+function lockDown() {
+  var done = [];
+  DriveApp.getFileById(SHEET_ID).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  done.push("recipe sheet: link sharing off");
+  [VOICE_FOLDER_NAME, PHOTO_FOLDER_NAME].forEach(function (name) {
+    var folder = namedFolder(name), n = 0;
+    folder.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    var files = folder.getFiles();
+    while (files.hasNext()) { files.next().setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); n++; }
+    done.push(name + ": " + n + " file(s) made private");
+  });
+  done.push(unpublishSheet());
+  return reply({ ok: true, done: done });
+}
+
+function inVoiceFolder(file) {
+  return inFolder(file, VOICE_FOLDER_NAME);
 }
 
 function todoRow(sheet, id) {
@@ -497,11 +570,13 @@ function readTodos(sheet) {
     .map(function (v) {
       return {
         id: String(v[0]), list: String(v[1]), task: String(v[2]), done: isDone(v[3]),
-        added: v[4] instanceof Date ? v[4].getTime() : 0,
-        doneAt: v[5] instanceof Date ? v[5].getTime() : 0
+        added: isDate(v[4]) ? v[4].getTime() : 0,
+        doneAt: isDate(v[5]) ? v[5].getTime() : 0
       };
     });
 }
+
+function isDate(v) { return Object.prototype.toString.call(v) === "[object Date]" && !isNaN(v.getTime()); }
 
 function isDone(v) { return /^(y|yes|done|true|1|x)$/i.test(String(v).trim()) || v === true; }
 

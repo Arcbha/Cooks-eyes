@@ -39,10 +39,26 @@ block in `APPS` at the top of `home/index.html`.
 A one-page recipe list for the cook's phone. Big dish photos, grouped by
 section (Breakfast, Main course, ...). Tapping a photo opens the YouTube video.
 
-The list is managed from a Google Sheet; the page reads it every time it opens.
+The list is managed from a private Google Sheet; the page reads it through the
+helper script every time it opens.
 
-- **Sheet (published CSV):** https://docs.google.com/spreadsheets/d/e/2PACX-1vRaRZ5A2EKnAYddc4YnMJwi2gyr-cFIIbRKQjuaKb13MsQ1S7rd-x7Iuon-PEvmuDPhIyZVoHV7QcDR/pub?output=csv
 - **Page:** `index.html` (the only file that matters)
+
+## Privacy
+
+- The sheet, the voice notes and the dish photos are **private**: not shared by
+  link and not published to the web. Only your Google account can open them.
+- The pages read them through the helper script, which hands out only the dish
+  list, the menu, and files in the **Recipe voice notes** and **Recipe photos**
+  folders. Nothing else in your Drive can be reached.
+- There is no passcode. Changes (plan, add a dish, record, to-dos) work only on
+  devices that have opened your **setup link** once. The setup link is private:
+  keep it to yourself and never send it to the cook. The cook's page has no
+  links to Home or the tools.
+- This code is public (free GitHub Pages needs that), but it holds no keys,
+  sheet links or passwords.
+- To lock a device out (for example a lost phone), ask Claude to change the
+  device key; every other device then opens the new setup link once.
 
 ## Sheet columns (row 1)
 
@@ -55,16 +71,8 @@ The list is managed from a Google Sheet; the page reads it every time it opens.
 | Show | `N` hides the dish; blank or `Y` shows it | No |
 | Voice link | Google Drive link to a spoken recipe; adds a **Listen to instructions** button under the dish | No |
 
-To show an **Edit dish list** link at the bottom of the page, paste the sheet's
-normal edit link (from the browser address bar while the sheet is open) into
-`SHEET_EDIT_URL` near the top of `index.html`. Only Google accounts the sheet is
-shared with can edit; anyone else just sees a "request access" page.
-
-Dishes appear in row order. The page reads the sheet directly, so edits show
-up as soon as the page is opened again or **Reload list** is tapped. This needs
-the sheet's sharing to stay at **Anyone with the link → Viewer**; if that is
-turned off, the page falls back to the published copy, which can lag by a few
-minutes and sometimes shows an older version.
+Dishes appear in row order. Edits show up as soon as the page is opened again
+or **Reload list** is tapped. Keep the sheet's sharing at **Restricted**.
 
 ## Add a dish (no sheet needed)
 
@@ -87,7 +95,7 @@ bottom of the recipe page):
 If the dish is already in that section, the page says so; tapping the button
 again replaces its video link (its voice note is kept). After adding, **Record
 voice instructions** goes straight to the record page with the new dish picked.
-Uses the same helper script and passcode as the record and plan pages.
+Works on your set-up devices, like the record and plan pages.
 
 ## Today's menu
 
@@ -116,7 +124,7 @@ created on the first save. It can also be edited by hand there: write dates as
 main tab so the photo, video and voice note show up. "Today" follows the date on
 the cook's phone.
 
-The plan page uses the same helper script and passcode as the record page.
+The plan page works on your set-up devices, like the record page.
 
 ## Voice instructions
 
@@ -128,22 +136,22 @@ time. If a phone can't play the file in the page, the button changes to
 ### Record page (easiest: record straight from your phone)
 
 Open the recipe site with `#record` on the end, e.g.
-**https://arcbha.github.io/Cooks-eyes/#record** (there is also a small
-**Record voice notes** link at the bottom of the recipe page). Pick the dish,
+**https://arcbha.github.io/Cooks-eyes/#record** (or tap **Voice note** on the
+Home page). Pick the dish,
 tap **Record**, speak, tap **Stop**, listen back, then **Save to recipe page**.
 The note goes into your Google Drive and its link into the sheet; it shows on
 the recipe page straight away. Recording again for the same dish
 replaces the old note. You can also pick a recording that is already on the
 phone (for example a WhatsApp voice note you saved).
 
-The page asks for a passcode (it remembers it on that phone), so only people
-you give it to can add notes.
+It works only on devices that have opened your setup link once.
 
 **One-time setup (10 minutes, on a computer):**
 1. Open the recipe sheet → **Extensions → Apps Script**. Delete what is there,
    paste in everything from `voice-notes-helper.gs`, and on the line
-   `var RECORDER_PASSCODE = "change-me";` replace `change-me` with your own
-   passcode (keep the quote marks). Click **Save**.
+   `var OWNER_KEY = "change-me";` replace `change-me` with a long random key
+   (keep the quote marks). Click **Save**. Your setup link is the Home page
+   address + `#setup=` + that key.
 2. Click **Deploy → New deployment**. Click the gear next to "Select type" →
    **Web app**. Set **Execute as: Me** and **Who has access: Anyone**. Click
    **Deploy**.
@@ -153,7 +161,7 @@ you give it to can add notes.
 4. Copy the **Web app URL** (it ends in `/exec`) and paste it into
    `VOICE_UPLOAD_URL` near the top of `index.html` (or send it to Claude to do).
 
-If you change the script later (for example a new passcode), use **Deploy →
+If you change the script later (for example a new device key), use **Deploy →
 Manage deployments → ✏️ → Version: New version → Deploy** so the address stays
 the same.
 
@@ -163,12 +171,13 @@ the same.
 notes** menu to the sheet (reload the sheet after step 1). Name each file like
 the dish (e.g. `Poha.m4a`), upload it to the Drive folder **Recipe voice
 notes**, then run the menu. It fills in the **Voice link** column, makes the
-files playable, and lists any file it couldn't match. (Menus need a computer,
+files playable on the page (they stay private), and lists any file it
+couldn't match. (Menus need a computer,
 or the phone's browser in "Desktop site" mode.)
 
 **By hand:** upload the recording into the **Recipe voice notes** folder in
-Google Drive, set **Share → General access → Anyone with the link**, copy the
-link, and paste it into the dish's **Voice link** cell.
+Google Drive, copy its link (leave its sharing as **Restricted**), and paste it
+into the dish's **Voice link** cell.
 
 Google Drive will not play its files inside other web pages, so the recipe page
 gets Drive voice notes through the helper script, which only hands out files in
@@ -198,8 +207,7 @@ Then open http://localhost:8000. A phone on the same Wi-Fi can open
 
 1. The repo must be **public** for free GitHub Pages:
    Settings → General → Danger Zone → Change visibility → Public.
-   (Nothing private is in here; the page only holds the published sheet link,
-   which is already public.)
+   (Nothing private is in here: no keys, passwords or sheet links.)
 2. Settings → Pages → Build and deployment → Source: **Deploy from a branch**,
    choose the branch holding `index.html` and folder **/ (root)** → Save.
 3. After a minute the page is live at **https://arcbha.github.io/Cooks-eyes/**
@@ -219,10 +227,10 @@ Open the link on the phone, then:
 
 | What you see | Fix |
 |---|---|
-| "Sample list" message | Sheet link not set in `index.html` (line 20) |
-| "did not return a list" | Sheet not published to web as CSV |
+| "Could not load the list" | Helper script address wrong in `index.html`, or the script was not redeployed |
 | "needs these column headings" | Restore Section, Dish name, YouTube link in row 1 |
 | Coloured letter tile instead of a photo | Link isn't a single video, or the video was removed |
 | "Video link missing" | YouTube link cell is empty |
-| New dish or voice note not showing | Tap Reload list; check the sheet is shared as Anyone with the link → Viewer |
+| New dish or voice note not showing | Tap Reload list |
+| "This device can't make changes" | Open your setup link once on that device |
 | A button named "Other" | A row has an empty Section cell |

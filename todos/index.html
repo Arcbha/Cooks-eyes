@@ -39,18 +39,21 @@ const CONFIG = {
 
     /* Palette (Apple's dark system colours). Every colour on the page comes from here.
        Ink #000000  Graphite #1C1C1E  Slate #2C2C2E  Snow #F5F5F7  Ash #98989D
-       Saffron #FF9F0A  Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6  Ember #FF453A */
+       Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6 (Apple system colours)
+       Gold #FFC53D / text #FFCA16, Ember #E5484D / text #FF9592 (Radix Colors amber & red) */
     --ink-black: #000000;
     --graphite: #1C1C1E;
     --slate: #2C2C2E;
     --snow: #F5F5F7;
     --ash: #98989D;
-    --saffron: #FF9F0A;
+    --saffron: #FFCA16;     /* Gold, for text and icons */
+    --gold-fill: #FFC53D;   /* Gold, for filled buttons (dark text on it) */
     --sky: #0A84FF;
     --sun: #FFD60A;
     --leaf: #30D158;
     --indigo: #5E5CE6;
-    --ember: #FF453A;
+    --ember: #FF9592;       /* Ember, for text */
+    --ember-fill: #E5484D;  /* Ember, for filled buttons (white text on it) */
 
     /* Roles */
     --bg: var(--ink-black);
@@ -63,7 +66,7 @@ const CONFIG = {
     --chrome: rgba(22, 22, 24, 0.72);
     --shadow: none;
     --line-strong: rgba(235, 235, 245, 0.45);
-    --on-accent: #000000;   /* text on Saffron/Ember fills */
+    --on-accent: #21201C;   /* text on Gold fills, both modes */
     --on-sky: #FFFFFF;      /* text on Sky fills, both modes */
     --accent: var(--sky);
     --accent-soft: rgba(10, 132, 255, 0.2);
@@ -85,12 +88,12 @@ const CONFIG = {
       --slate: #FFFFFF;
       --snow: #1C1C1E;
       --ash: #6E6E73;
-      --saffron: #C93400;
+      --saffron: #AB6400;
       --sky: #007AFF;
       --sun: #B25000;
       --leaf: #248A3D;
       --indigo: #3634A3;
-      --ember: #D70015;
+      --ember: #CE2C31;
 
       --bg: #F2F2F7;
       --line: rgba(60, 60, 67, 0.16);
@@ -98,7 +101,7 @@ const CONFIG = {
       --fill: rgba(118, 118, 128, 0.12);
       --chrome: rgba(242, 242, 247, 0.78);
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-      --on-accent: #FFFFFF;
+      --on-accent: #21201C;
       --accent-soft: rgba(0, 122, 255, 0.12);
     }
   }
@@ -215,7 +218,7 @@ const CONFIG = {
     flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: none;
     color: var(--ash); font-size: 1.4rem; line-height: 1; cursor: pointer;
   }
-  .del:active { background: rgba(255, 69, 58, 0.16); color: var(--danger); }
+  .del:active { background: rgba(229, 72, 77, 0.14); color: var(--danger); }
   .tick:focus-visible, .del:focus-visible, .list-tab:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   .empty {
@@ -293,7 +296,7 @@ const CONFIG = {
   .item.done .box { background: var(--accent); border-color: var(--accent); }
   .item.done .text { color: var(--muted); }
   .del { color: var(--muted); opacity: 0.6; }
-  .del:active { background: rgba(255, 69, 58, 0.16); color: var(--danger); opacity: 1; }
+  .del:active { background: rgba(229, 72, 77, 0.14); color: var(--danger); opacity: 1; }
 
   .empty { border: 0; background: var(--card); box-shadow: var(--shadow); }
   .done-toggle { font-weight: 600; letter-spacing: 0.04em; }
@@ -362,12 +365,8 @@ const CONFIG = {
 
 <div class="wrap">
   <section class="gate" id="gate" hidden>
-    <h2>Enter the passcode</h2>
-    <p>The same passcode as the recipe tools. This phone remembers it.</p>
-    <form id="gateForm">
-      <input id="gatePass" type="password" autocomplete="current-password">
-      <button type="submit" id="gateBtn">Open</button>
-    </form>
+    <h2>This device isn't set up yet</h2>
+    <p>Home To-dos opens on your own phones and laptops. Open your Home Suite setup link once on this device, and it stays set up.</p>
     <p class="msg" id="gateMsg" hidden></p>
   </section>
 
@@ -391,6 +390,16 @@ const CONFIG = {
 <script>
 (function () {
   "use strict";
+  /* Setup link: site address + "home/#setup=<key>" (or any Home Suite page). Opening it once
+     saves this device's key, so it can make changes; the key is never typed. */
+  (function takeSetupLink() {
+    var m = location.hash.match(/^#setup=([\w-]{20,})$/);
+    if (!m) return;
+    try { localStorage.setItem("home-suite-device-key-v1", m[1]); } catch (e) { /* storage blocked */ }
+    history.replaceState(null, "", location.pathname + location.search);
+    window.__justSetUp = true;
+  })();
+  try { localStorage.removeItem("recipe-page-passcode-v1"); } catch (e) { /* old passcode, no longer used */ }
 
   /* Line icons in the SF Symbols style: one stroke weight, drawn in the text colour.
      Only these fixed shapes are ever inserted as markup. */
@@ -419,7 +428,7 @@ const CONFIG = {
       (ICONS[name] || "") + '</svg>';
   }
 
-  var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and Home
+  var DEVICE_KEY = "home-suite-device-key-v1";   // set by the setup link; shared by every Home Suite page
   var CACHE_KEY = "home-todos-cache-v1";        // the items (Home reads this too)
   var LISTS_CACHE_KEY = "home-todos-lists-v1";  // lists made with + and note text
   var LIST_KEY = "home-todos-list-v1";
@@ -431,9 +440,6 @@ const CONFIG = {
     addForm: document.getElementById("addForm"),
     addInput: document.getElementById("addInput"),
     gate: document.getElementById("gate"),
-    gateForm: document.getElementById("gateForm"),
-    gatePass: document.getElementById("gatePass"),
-    gateBtn: document.getElementById("gateBtn"),
     gateMsg: document.getElementById("gateMsg"),
     main: document.getElementById("main"),
     pending: document.getElementById("pending"),
@@ -505,13 +511,13 @@ const CONFIG = {
   /* ---------- talking to the helper ---------- */
 
   function call(body) {
-    body.passcode = store(PASS_KEY) || "";
+    body.key = store(DEVICE_KEY) || "";
     return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) })
       .then(function (res) { return res.json(); })
       .then(function (out) {
         if (!out || !out.ok) {
           var err = new Error((out && out.error) || "Could not save.");
-          err.wrongPass = /passcode/i.test(err.message);
+          err.wrongPass = !!out.needsSetup;
           throw err;
         }
         return out;
@@ -808,17 +814,16 @@ const CONFIG = {
     send({ action: "todoListDelete", name: name });
   });
 
-  /* ---------- passcode ---------- */
+  /* ---------- device key ---------- */
 
   function lock(message) {
-    store(PASS_KEY, null);
+    store(DEVICE_KEY, null);
     el.bar.hidden = true;
     el.main.hidden = true;
     el.gate.hidden = false;
     el.gateMsg.textContent = message || "";
     el.gateMsg.hidden = !message;
     setSync("");
-    el.gatePass.focus();
   }
 
   function unlock() {
@@ -827,25 +832,6 @@ const CONFIG = {
     el.main.hidden = false;
     render();
   }
-
-  el.gateForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    var pass = el.gatePass.value.trim();
-    if (!pass) return;
-    store(PASS_KEY, pass);
-    el.gateBtn.disabled = true;
-    el.gateBtn.textContent = "Checking...";
-    el.gateMsg.hidden = true;
-    refresh().then(function (ok) {
-      el.gateBtn.disabled = false;
-      el.gateBtn.textContent = "Open";
-      if (ok) unlock();
-      else if (!el.gate.hidden && el.gateMsg.hidden) {
-        el.gateMsg.textContent = "Could not reach Google. Check the internet and try again.";
-        el.gateMsg.hidden = false;
-      }
-    });
-  });
 
   /* ---------- adding, clearing ---------- */
 
@@ -889,7 +875,7 @@ const CONFIG = {
   } catch (e) { /* start without them */ }
   currentList = store(LIST_KEY);
 
-  if (!store(PASS_KEY)) {
+  if (!store(DEVICE_KEY)) {
     lock("");
   } else {
     unlock();

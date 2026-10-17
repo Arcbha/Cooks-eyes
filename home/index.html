@@ -20,9 +20,8 @@
 const CONFIG = {
   TITLE: "Home Suite",
 
-  // The helper web app (voice-notes-helper.gs) and the recipe sheet's normal link.
+  // The helper web app (voice-notes-helper.gs). The sheets are private; everything is read through it.
   HELPER_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
-  RECIPE_SHEET_URL: "https://docs.google.com/spreadsheets/d/1ouaN4vlpE2kqWeJvlirBZJocowH_5f32Dr0aJBDWrCQ/edit",
 
   APPS: [
     {
@@ -57,18 +56,21 @@ const CONFIG = {
 
     /* Palette (Apple's dark system colours). Every colour on the page comes from here.
        Ink #000000  Graphite #1C1C1E  Slate #2C2C2E  Snow #F5F5F7  Ash #98989D
-       Saffron #FF9F0A  Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6  Ember #FF453A */
+       Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6 (Apple system colours)
+       Gold #FFC53D / text #FFCA16, Ember #E5484D / text #FF9592 (Radix Colors amber & red) */
     --ink-black: #000000;
     --graphite: #1C1C1E;
     --slate: #2C2C2E;
     --snow: #F5F5F7;
     --ash: #98989D;
-    --saffron: #FF9F0A;
+    --saffron: #FFCA16;     /* Gold, for text and icons */
+    --gold-fill: #FFC53D;   /* Gold, for filled buttons (dark text on it) */
     --sky: #0A84FF;
     --sun: #FFD60A;
     --leaf: #30D158;
     --indigo: #5E5CE6;
-    --ember: #FF453A;
+    --ember: #FF9592;       /* Ember, for text */
+    --ember-fill: #E5484D;  /* Ember, for filled buttons (white text on it) */
 
     /* Roles */
     --bg: var(--ink-black);
@@ -81,7 +83,7 @@ const CONFIG = {
     --chrome: rgba(22, 22, 24, 0.72);
     --shadow: none;
     --line-strong: rgba(235, 235, 245, 0.45);
-    --on-accent: #000000;   /* text on Saffron/Ember fills */
+    --on-accent: #21201C;   /* text on Gold fills, both modes */
     --accent: var(--sky);
     --accent-soft: rgba(10, 132, 255, 0.2);
 
@@ -101,12 +103,12 @@ const CONFIG = {
       --slate: #FFFFFF;
       --snow: #1C1C1E;
       --ash: #6E6E73;
-      --saffron: #C93400;
+      --saffron: #AB6400;
       --sky: #007AFF;
       --sun: #B25000;
       --leaf: #248A3D;
       --indigo: #3634A3;
-      --ember: #D70015;
+      --ember: #CE2C31;
 
       --bg: #F2F2F7;
       --line: rgba(60, 60, 67, 0.16);
@@ -114,7 +116,7 @@ const CONFIG = {
       --fill: rgba(118, 118, 128, 0.12);
       --chrome: rgba(242, 242, 247, 0.78);
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-      --on-accent: #FFFFFF;
+      --on-accent: #21201C;
       --accent-soft: rgba(0, 122, 255, 0.12);
     }
   }
@@ -182,6 +184,8 @@ const CONFIG = {
     display: flex; align-items: center; justify-content: center; min-height: 96px; padding: 16px;
     border: 2px dashed var(--line); border-radius: var(--radius); color: var(--muted); font-size: var(--fs-small); text-align: center;
   }
+  .device { margin: 18px 4px 0; color: var(--muted); font-size: var(--fs-small); text-align: center; }
+  .device.ok { color: var(--leaf); }
   a:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   /* ============ Apple-style layer ============ */
@@ -194,7 +198,8 @@ const CONFIG = {
           box-shadow: inset 0 0 0 0.5px rgba(245, 245, 247, 0.12); }
   /* Each app takes one palette colour: its icon, its summary chips and its links */
   .app.sky     { --tint: rgba(10, 132, 255, 0.16); --solid: var(--sky);     --ink-2: var(--sky); }
-  .app.saffron { --tint: rgba(255, 159, 10, 0.16); --solid: var(--saffron); --ink-2: var(--saffron); }
+  .app.saffron { --tint: rgba(255, 197, 61, 0.18); --solid: var(--gold-fill); --ink-2: var(--saffron); }
+  .app.saffron .icon { color: var(--on-accent); }
   .app.leaf    { --tint: rgba(48, 209, 88, 0.16);  --solid: var(--leaf);    --ink-2: var(--leaf); }
   .app.indigo  { --tint: rgba(94, 92, 230, 0.20);  --solid: var(--indigo);  --ink-2: var(--indigo); }
   .icon {
@@ -236,11 +241,22 @@ const CONFIG = {
     <h1 id="title">Home Suite</h1>
   </header>
   <ul class="apps" id="apps"></ul>
+  <p class="device" id="device" hidden></p>
 </div>
 
 <script>
 (function () {
   "use strict";
+  /* Setup link: this page's address + "#setup=<key>". Opening it once saves this device's key,
+     so the Home Suite pages can read and save; the key is never typed. */
+  (function takeSetupLink() {
+    var m = location.hash.match(/^#setup=([\w-]{20,})$/);
+    if (!m) return;
+    try { localStorage.setItem("home-suite-device-key-v1", m[1]); } catch (e) { /* storage blocked */ }
+    history.replaceState(null, "", location.pathname + location.search);
+    window.__justSetUp = true;
+  })();
+  try { localStorage.removeItem("recipe-page-passcode-v1"); } catch (e) { /* old passcode, no longer used */ }
 
   /* Line icons in the SF Symbols style: one stroke weight, drawn in the text colour.
      Only these fixed shapes are ever inserted as markup. */
@@ -269,7 +285,7 @@ const CONFIG = {
       (ICONS[name] || "") + '</svg>';
   }
 
-  var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and To-dos
+  var DEVICE_KEY = "home-suite-device-key-v1"; // set by the setup link; shared by every Home Suite page
   var TODO_CACHE_KEY = "home-todos-cache-v1"; // the To-dos page keeps its last list here
 
   function store(key) {
@@ -385,19 +401,33 @@ const CONFIG = {
     });
   }
   try { var cached = JSON.parse(store(TODO_CACHE_KEY) || "null"); if (cached) showTodos(cached); } catch (e) { /* ignore */ }
-  if (store(PASS_KEY)) {
-    fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ passcode: store(PASS_KEY), action: "todos" }) })
+  var device = document.getElementById("device");
+  function deviceNote(text, ok) {
+    device.textContent = text;
+    device.className = "device" + (ok ? " ok" : "");
+    device.hidden = false;
+  }
+  if (store(DEVICE_KEY)) {
+    if (window.__justSetUp) deviceNote("This device is set up. Home To-dos and the recipe tools will work here.", true);
+    fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ key: store(DEVICE_KEY), action: "todos" }) })
       .then(function (res) { return res.json(); })
-      .then(function (out) { if (out && out.ok) showTodos(out.items); })
+      .then(function (out) {
+        if (out && out.ok) showTodos(out.items);
+        else if (out && out.needsSetup) {
+          try { localStorage.removeItem(DEVICE_KEY); } catch (e) { /* ignore */ }
+          deviceNote("This device's setup link is no longer valid. Open your current setup link once.");
+        }
+      })
       .catch(function () { /* the cached numbers stay */ });
+  } else {
+    deviceNote("This device isn't set up yet. Open your Home Suite setup link on it once.");
   }
 
-  // Recipes: today's menu from the recipe sheet's Menu tab.
-  var sheetId = (CONFIG.RECIPE_SHEET_URL.match(/\/spreadsheets\/d\/([\w-]+)/) || [])[1];
-  if (sheetId) {
-    fetch("https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:csv&headers=1&sheet=Menu&t=" + Date.now(),
-          { cache: "no-store", credentials: "omit" })
-      .then(function (res) { return res.ok ? res.text() : ""; })
+  // Recipes: today's menu from the recipe sheet's Menu tab (read through the helper).
+  if (CONFIG.HELPER_URL) {
+    fetch(CONFIG.HELPER_URL + "?recipes=1&t=" + Date.now(), { cache: "no-store", credentials: "omit" })
+      .then(function (res) { return res.ok ? res.json() : {}; })
+      .then(function (out) { return out && out.ok ? out.menu : ""; })
       .then(function (text) {
         var rows = parseCSV(text);
         var head = (rows[0] || []).map(function (h) { return String(h).toLowerCase(); });

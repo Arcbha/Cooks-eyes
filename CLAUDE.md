@@ -13,10 +13,15 @@ This repo is the owner's **Home Suite**, published on GitHub Pages:
 - Each app is its own single file with all its HTML, CSS and JavaScript. A new
   app is a new folder with an `index.html`, plus one tile in `home/index.html`.
 - All apps save through the one helper script (`voice-notes-helper.gs`, same web
-  app address and passcode). The recipe data is in the recipe sheet, which is
-  readable by link; everything else (to-dos) is in a private "Home Suite data"
-  spreadsheet the script creates. The passcode is remembered per phone under the
-  same browser storage key on every page.
+  app address). There is no passcode. Every sheet and Drive file is private
+  (not shared by link, not published to the web); pages read the dish list,
+  menu, voice notes and photos only through the helper. Reading recipes is
+  open (the cook needs it); every change and every to-do read needs the
+  owner's **device key**, saved on each of the owner's devices by opening the
+  setup link (`home/#setup=<key>`) once, under the browser storage key
+  `home-suite-device-key-v1`. The cook's phone never gets the key. The key,
+  the setup link and the ntfy topic must never be committed (the repo is
+  public, which free GitHub Pages needs).
 
 ## Updating the helper script (no copy-paste needed)
 
@@ -29,15 +34,17 @@ The live script can be updated from a Claude session with Google's `clasp` tool
 
 Sign-in: if the environment variable `CLASPRC_JSON` is set (the owner stored the
 saved clasp sign-in in the Claude environment's settings, base64-encoded),
-decode it into `~/.clasprc.json` and skip logging in; the passcode is in `HOME_SUITE_PASSCODE`
-when set. Never print either value or put them in the repo. Only if they are
+decode it into `~/.clasprc.json` and skip logging in; the device key is in `HOME_SUITE_DEVICE_KEY`
+when set (it can also be read from the live `Code.js` after `clasp clone`). Never print either value or put them in the repo. Only if they are
 missing or rejected: `clasp login --no-localhost` (the owner opens the link,
 approves, and pastes back the `http://localhost:8888/?...` address).
 
 Steps: `clasp clone <script id>`
 into a scratch folder, compare the live `Code.js` with `voice-notes-helper.gs`,
-copy the new file in with the real passcode put in place of `change-me` (ask the
-owner; never commit it), keep the downloaded `appsscript.json` as it is,
+copy the new file in with the device key put in place of `change-me` (never
+commit it). Until the owner has run `authorizeNotifications` in the editor,
+push a build without the parts between `// <external>` and `// </external>`
+(they need a permission the live script does not have yet, and would break it), keep the downloaded `appsscript.json` as it is,
 `clasp push --force`, then `clasp update-deployment <deployment id> -d "<what
 changed>"` so the address stays the same. Test the live address afterwards and
 remove any test data. Keep the sign-in out of the repo; it lasts only for the
@@ -47,8 +54,8 @@ session.
 
 - The recipe page is for a household cook. It is one file, `index.html`,
   with all HTML, CSS and JavaScript inside it.
-- The dish list comes from a published Google Sheet (CSV). The link is
-  `CONFIG.SHEET_CSV_URL` at the top of `index.html`. Columns: Section,
+- The dish list comes from the private recipe Google Sheet, read through the
+  helper (`?recipes=1`). Columns: Section,
   Dish name, YouTube link, Image link (optional), Show (optional),
   Voice link (optional, usually a Google Drive link).
 - The owner is not a programmer. Keep everything in the single file. Do not
@@ -95,10 +102,11 @@ session.
   following the phone's light/dark setting:
   Ink (background) #F2F2F7 / #000000, Graphite (cards) #FFFFFF / #1C1C1E,
   Slate (raised) #FFFFFF / #2C2C2E, Snow (text) #1C1C1E / #F5F5F7,
-  Ash (secondary text) #6E6E73 / #98989D, Saffron #C93400 / #FF9F0A (recipes),
+  Ash (secondary text) #6E6E73 / #98989D, Gold (recipes, filled buttons and
+  tabs; Radix amber) fill #FFC53D with #21201C text, gold text #AB6400 / #FFCA16,
   Sky #007AFF / #0A84FF (to-dos, Home, links), Sun #B25000 / #FFD60A
   (breakfast), Leaf #248A3D / #30D158 (lunch, WhatsApp), Indigo #3634A3 /
-  #5E5CE6 (dinner), Ember #D70015 / #FF453A (delete, errors). Each app takes
+  #5E5CE6 (dinner), Ember (record, delete, errors; Radix red) fill #E5484D, text #CE2C31 / #FF9592. Each app takes
   one accent; meals keep their colour everywhere.
 - After any change, also open `home/` and `todos/` at 390px width and confirm
   they load, their links work, and nothing scrolls sideways.
