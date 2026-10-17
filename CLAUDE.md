@@ -7,7 +7,9 @@ This repo is the owner's **Home Suite**, published on GitHub Pages:
   the Home Suite or the other apps (the cook does not need to see them).
 - `home/index.html` is the Home Suite launcher (one tile per app, listed in its
   `CONFIG.APPS`), for the owner only.
-- `todos/index.html` is **Home To-dos** (Things to order, Home chores).
+- `todos/index.html` is **Home To-dos**: built-in checklists (Things to order,
+  Home chores) and a Notes page, plus lists made on the page with + (checklist
+  or note), kept in the private spreadsheet's Todos and Lists tabs.
 - Each app is its own single file with all its HTML, CSS and JavaScript. A new
   app is a new folder with an `index.html`, plus one tile in `home/index.html`.
 - All apps save through the one helper script (`voice-notes-helper.gs`, same web

@@ -227,14 +227,22 @@ function listColumns(header) {
 var SUITE_FILE_NAME = "Home Suite data";
 var TODO_SHEET_NAME = "Todos";
 var TODO_HEADERS = ["ID", "List", "Task", "Done", "Added", "Done at"];
+// Lists made with the + button, and the text of note pages.
+var LIST_SHEET_NAME = "Lists";
+var LIST_HEADERS = ["Name", "Type", "Icon", "Text", "Updated"];
 
 // The to-do page sends { passcode, action, ... } with action one of:
 //   "todos" (just read), "todoAdd" { id, list, task }, "todoSet" { id, done },
-//   "todoDelete" { id }, "todoClearDone" { list }.
-// Every answer carries the whole list, so the page always ends up in step.
+//   "todoDelete" { id }, "todoClearDone" { list },
+//   "todoListAdd" { name, type: "check" or "note", icon },
+//   "todoListDelete" { name } (the list and everything in it),
+//   "todoNoteSave" { name, text }.
+// Every answer carries all items and lists, so the page always ends up in step.
 function todoAction(req) {
   var sheet = suiteSheet(TODO_SHEET_NAME, TODO_HEADERS);
+  var lists = suiteSheet(LIST_SHEET_NAME, LIST_HEADERS);
   var action = req.action;
+  var name = String(req.name || "").trim().slice(0, 40);
 
   if (action === "todoAdd") {
     var task = String(req.task || "").trim().slice(0, 200);
@@ -262,11 +270,56 @@ function todoAction(req) {
         if (inList && isDone(vals[i][3])) sheet.deleteRow(i + 2);
       }
     }
+  } else if (action === "todoListAdd") {
+    if (!name) return reply({ ok: false, error: "Type a name for the list." });
+    if (!listRow(lists, name)) {
+      lists.appendRow([name, req.type === "note" ? "note" : "check", String(req.icon || "").slice(0, 8), "", new Date()]);
+    }
+  } else if (action === "todoListDelete") {
+    var lr = listRow(lists, name);
+    if (lr) lists.deleteRow(lr);
+    var lastItem = sheet.getLastRow();
+    if (name && lastItem > 1) {
+      var listCol = sheet.getRange(2, 2, lastItem - 1, 1).getValues();
+      for (var k = listCol.length - 1; k >= 0; k--) if (String(listCol[k][0]) === name) sheet.deleteRow(k + 2);
+    }
+  } else if (action === "todoNoteSave") {
+    if (!name) return reply({ ok: false, error: "No note picked." });
+    var text = String(req.text || "").slice(0, 40000);
+    var nr = listRow(lists, name);
+    if (!nr) {
+      lists.appendRow([name, "note", String(req.icon || "").slice(0, 8), "", new Date()]);
+      nr = lists.getLastRow();
+    }
+    lists.getRange(nr, 4).setNumberFormat("@");   // keep the note exactly as typed
+    lists.getRange(nr, 4).setValue(text);
+    lists.getRange(nr, 5).setValue(new Date());
   } else if (action !== "todos") {
     return reply({ ok: false, error: "Unknown request." });
   }
   SpreadsheetApp.flush();
-  return reply({ ok: true, items: readTodos(sheet) });
+  return reply({ ok: true, items: readTodos(sheet), lists: readLists(lists) });
+}
+
+function listRow(sheet, name) {
+  var last = sheet.getLastRow();
+  if (!name || last < 2) return 0;
+  var names = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (var i = 0; i < names.length; i++) if (String(names[i][0]).trim() === name) return i + 2;
+  return 0;
+}
+
+function readLists(sheet) {
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, 5).getValues()
+    .filter(function (v) { return String(v[0]).trim(); })
+    .map(function (v) {
+      return {
+        name: String(v[0]).trim(), type: String(v[1]) === "note" ? "note" : "check", icon: String(v[2] || ""),
+        text: String(v[3] || ""), updated: v[4] instanceof Date ? v[4].getTime() : 0
+      };
+    });
 }
 
 /* ---------------- plan page ---------------- */

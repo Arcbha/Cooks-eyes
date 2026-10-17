@@ -15,8 +15,16 @@ no link to the Home Suite. Add **Home Suite** to your own phone's home screen.
 open items as one message (handy for the shop). Changes save straight away and
 show on other phones when the page is opened again. The lists are kept in a
 private **Home Suite data** spreadsheet in your Google Drive (created the first
-time the page is used), not in the recipe sheet. More lists: add a line to
-`LISTS` at the top of `todos/index.html`.
+time the page is used), not in the recipe sheet.
+
+**More lists and notes:** tap **+** after the list buttons, type a name, choose
+**☑ Checklist** (items to tick off) or **📝 Note** (free writing), and tap
+**Create**. The built-in **📝 Notes** page and every note list are one big text
+box that saves by itself a moment after typing stops (and when switching away);
+the line under it shows when it was last saved, and it can be shared on
+WhatsApp. Lists made with + can be removed with **Delete the list** at the
+bottom of that list (the built-in lists cannot). Lists made with + and note text
+are kept in a **Lists** tab of the same private spreadsheet.
 
 **Adding another app later:** a new folder with its own `index.html`, plus one
 block in `APPS` at the top of `home/index.html`.

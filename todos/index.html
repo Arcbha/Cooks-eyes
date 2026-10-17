@@ -19,10 +19,13 @@ const CONFIG = {
   // The same helper web app the recipe page uses (voice-notes-helper.gs).
   HELPER_URL: "https://script.google.com/macros/s/AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5/exec",
 
-  // The lists, in order. Add another line to add a list.
+  // The built-in lists, in order (they cannot be deleted from the page).
+  // type "check" is a checklist, type "note" is a free-text page.
+  // More lists can be made on the page with the + button.
   LISTS: [
-    { name: "Things to order", icon: "🛒", placeholder: "Add something to order" },
-    { name: "Home chores",     icon: "🧹", placeholder: "Add a chore" }
+    { name: "Things to order", icon: "🛒", type: "check", placeholder: "Add something to order" },
+    { name: "Home chores",     icon: "🧹", type: "check", placeholder: "Add a chore" },
+    { name: "Notes",           icon: "📝", type: "note" }
   ]
 };
 </script>
@@ -67,9 +70,9 @@ const CONFIG = {
 
   /* List switcher */
   .bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 12px; border-bottom: 1px solid var(--line); }
-  .lists { display: flex; gap: 10px; }
+  .lists { display: flex; flex-wrap: wrap; gap: 8px; }
   .list-tab {
-    flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex: 1 1 130px; display: flex; align-items: center; justify-content: center; gap: 8px;
     min-height: 54px; padding: 6px 10px; border: 2px solid var(--ink); border-radius: 14px;
     background: var(--card); color: var(--ink); font-size: var(--fs-body); font-weight: 700; line-height: 1.15; cursor: pointer;
   }
@@ -79,6 +82,49 @@ const CONFIG = {
     background: var(--accent-soft); color: var(--accent);
   }
   .list-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, 0.18); color: var(--bg); }
+
+  .list-tab.plus {
+    flex: 0 0 54px; padding: 0; border-style: dashed; color: var(--accent); border-color: var(--accent);
+    font-size: 1.7rem; font-weight: 600; line-height: 1;
+  }
+  .list-tab.plus[aria-expanded="true"] { background: var(--accent-soft); }
+
+  /* New list panel */
+  .newlist { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
+  .newlist label { display: block; font-size: var(--fs-small); font-weight: 700; color: var(--muted); }
+  .newlist input {
+    display: block; width: 100%; margin-top: 6px; min-height: 52px; padding: 10px 14px;
+    border: 2px solid var(--line); border-radius: 14px; font: inherit; font-size: var(--fs-body); color: var(--ink);
+  }
+  .newlist input:focus { outline: none; border-color: var(--accent); }
+  .types { display: flex; gap: 8px; margin: 12px 0; }
+  .type-chip {
+    flex: 1 1 0; min-height: 52px; border: 2px solid var(--line); border-radius: 14px; background: var(--card);
+    color: var(--ink); font-size: var(--fs-body); font-weight: 700; cursor: pointer;
+  }
+  .type-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .type-chip small { display: block; font-size: var(--fs-label); font-weight: 600; color: var(--muted); }
+  .newlist .row { display: flex; gap: 8px; }
+  .newlist .create, .newlist .cancel {
+    flex: 1 1 0; min-height: 52px; border-radius: 14px; font-size: var(--fs-body); font-weight: 800; cursor: pointer;
+  }
+  .newlist .create { border: 0; background: var(--accent); color: #FFFFFF; }
+  .newlist .cancel { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); }
+  .newlist .msg { margin: 10px 0 0; color: var(--danger); font-size: var(--fs-small); font-weight: 600; }
+
+  /* Note page */
+  .note textarea {
+    display: block; width: 100%; min-height: 55vh; padding: 16px; resize: vertical;
+    border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--ink);
+    font: inherit; font-size: var(--fs-body); line-height: 1.55;
+  }
+  .note textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .note-info { margin: 8px 4px 0; font-size: var(--fs-label); font-weight: 600; color: var(--muted); }
+
+  .delete-list {
+    display: block; margin: 28px auto 0; min-height: 44px; padding: 0 16px; border: 0; background: none;
+    color: var(--danger); font-size: var(--fs-small); font-weight: 700; text-decoration: underline; cursor: pointer;
+  }
 
   /* Add box */
   .add { display: flex; gap: 10px; margin-top: 12px; }
@@ -169,6 +215,19 @@ const CONFIG = {
 <div class="bar" id="bar" hidden>
   <div class="wrap">
     <div class="lists" id="lists" role="tablist"></div>
+    <form class="newlist" id="newList" autocomplete="off" hidden>
+      <label for="newListName">New list name</label>
+      <input id="newListName" type="text" maxlength="40" placeholder="For example: Pharmacy, Guests, Ideas">
+      <div class="types" role="group" aria-label="Kind of list">
+        <button class="type-chip" type="button" data-type="check" aria-pressed="true">☑ Checklist<small>Tick items off</small></button>
+        <button class="type-chip" type="button" data-type="note" aria-pressed="false">📝 Note<small>Free writing</small></button>
+      </div>
+      <div class="row">
+        <button class="create" type="submit">Create</button>
+        <button class="cancel" type="button" id="newListCancel">Cancel</button>
+      </div>
+      <p class="msg" id="newListMsg" hidden></p>
+    </form>
     <form class="add" id="addForm" autocomplete="off">
       <input id="addInput" type="text" enterkeyhint="done" maxlength="200">
       <button type="submit">Add</button>
@@ -188,6 +247,10 @@ const CONFIG = {
   </section>
 
   <main id="main" hidden>
+    <section class="note" id="noteBox" hidden>
+      <textarea id="noteText" placeholder="Write anything here. It saves by itself."></textarea>
+      <p class="note-info" id="noteInfo"></p>
+    </section>
     <ul class="items" id="pending"></ul>
     <div id="emptyBox"></div>
     <a class="share" id="share" target="_blank" rel="noopener noreferrer" hidden>Share this list on WhatsApp</a>
@@ -196,6 +259,7 @@ const CONFIG = {
       <button class="clear" id="clearDone" type="button">Clear done</button>
     </div>
     <ul class="items" id="doneList" hidden></ul>
+    <button class="delete-list" id="deleteList" type="button" hidden></button>
   </main>
 </div>
 
@@ -204,7 +268,8 @@ const CONFIG = {
   "use strict";
 
   var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and Home
-  var CACHE_KEY = "home-todos-cache-v1";
+  var CACHE_KEY = "home-todos-cache-v1";        // the items (Home reads this too)
+  var LISTS_CACHE_KEY = "home-todos-lists-v1";  // lists made with + and note text
   var LIST_KEY = "home-todos-list-v1";
 
   var el = {
@@ -225,7 +290,15 @@ const CONFIG = {
     doneHead: document.getElementById("doneHead"),
     doneToggle: document.getElementById("doneToggle"),
     clearDone: document.getElementById("clearDone"),
-    doneList: document.getElementById("doneList")
+    doneList: document.getElementById("doneList"),
+    newList: document.getElementById("newList"),
+    newListName: document.getElementById("newListName"),
+    newListCancel: document.getElementById("newListCancel"),
+    newListMsg: document.getElementById("newListMsg"),
+    noteBox: document.getElementById("noteBox"),
+    noteText: document.getElementById("noteText"),
+    noteInfo: document.getElementById("noteInfo"),
+    deleteList: document.getElementById("deleteList")
   };
 
   var items = [];          // [{ id, list, task, done, added, doneAt }]
@@ -234,6 +307,11 @@ const CONFIG = {
   var queue = Promise.resolve();
   var inFlight = 0;
   var lastLoad = 0;
+  var serverLists = [];    // [{ name, type, icon, text, updated }] from the Lists tab
+  var notes = {};          // note text by list name, as typed here
+  var noteDirty = {};      // typed here but not yet sent
+  var noteTimer = null;
+  var newListType = "check";
 
   function store(key, value) {
     try {
@@ -251,12 +329,23 @@ const CONFIG = {
 
   function listNames() {
     var names = CONFIG.LISTS.map(function (l) { return l.name; });
+    serverLists.forEach(function (l) { if (names.indexOf(l.name) < 0) names.push(l.name); });
     items.forEach(function (it) { if (it.list && names.indexOf(it.list) < 0) names.push(it.list); });
     return names;
   }
+  function isBuiltIn(name) {
+    return CONFIG.LISTS.some(function (l) { return l.name === name; });
+  }
   function listInfo(name) {
-    return CONFIG.LISTS.filter(function (l) { return l.name === name; })[0] ||
-      { name: name, icon: "📝", placeholder: "Add to " + name };
+    var built = CONFIG.LISTS.filter(function (l) { return l.name === name; })[0];
+    var made = serverLists.filter(function (l) { return l.name === name; })[0];
+    var type = (built && built.type) || (made && made.type) || "check";
+    return {
+      name: name,
+      type: type === "note" ? "note" : "check",
+      icon: (built && built.icon) || (made && made.icon) || (type === "note" ? "📝" : "📋"),
+      placeholder: (built && built.placeholder) || "Add to " + name
+    };
   }
 
   /* ---------- talking to the helper ---------- */
@@ -282,7 +371,7 @@ const CONFIG = {
     setSync("Saving...");
     queue = queue.then(function () { return call(body); }).then(function (out) {
       inFlight--;
-      if (!inFlight) { setItems(out.items); setSync("Saved"); }
+      if (!inFlight) { setData(out); setSync("Saved"); }
     }, function (err) {
       inFlight--;
       if (err.wrongPass) { lock(err.message); return; }
@@ -295,7 +384,7 @@ const CONFIG = {
     lastLoad = Date.now();
     if (!inFlight) setSync("Updating...");
     return call({ action: "todos" }).then(function (out) {
-      if (!inFlight) { setItems(out.items); setSync(""); }
+      if (!inFlight) { setData(out); setSync(""); }
       return true;
     }).catch(function (err) {
       if (err.wrongPass) { lock(err.message); return false; }
@@ -304,10 +393,20 @@ const CONFIG = {
     });
   }
 
-  function setItems(list) {
-    items = list || [];
-    store(CACHE_KEY, JSON.stringify(items));
+  function setData(out) {
+    items = out.items || [];
+    if (out.lists) {
+      serverLists = out.lists;
+      // A note being typed here keeps what is on screen; the rest take Google's copy.
+      serverLists.forEach(function (l) { if (l.type === "note" && !noteDirty[l.name]) notes[l.name] = l.text; });
+    }
+    saveCache();
     render();
+  }
+
+  function saveCache() {
+    store(CACHE_KEY, JSON.stringify(items));
+    store(LISTS_CACHE_KEY, JSON.stringify({ lists: serverLists, notes: notes }));
   }
 
   /* ---------- drawing ---------- */
@@ -329,18 +428,61 @@ const CONFIG = {
       icon.textContent = info.icon;
       var label = document.createElement("span");
       label.textContent = name;
-      var n = document.createElement("span");
-      n.className = "n";
-      n.textContent = items.filter(function (it) { return it.list === name && !it.done; }).length;
-      b.appendChild(icon); b.appendChild(label); b.appendChild(n);
+      b.appendChild(icon); b.appendChild(label);
+      if (info.type === "check") {
+        var n = document.createElement("span");
+        n.className = "n";
+        n.textContent = items.filter(function (it) { return it.list === name && !it.done; }).length;
+        b.appendChild(n);
+      }
       b.addEventListener("click", function () {
+        flushNote();
         currentList = name;
         store(LIST_KEY, name);
+        closeNewList();
         render();
       });
       el.lists.appendChild(b);
     });
-    el.addInput.placeholder = listInfo(currentList).placeholder;
+
+    // The + button makes a new list.
+    var plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "list-tab plus";
+    plus.setAttribute("aria-label", "Make a new list");
+    plus.setAttribute("aria-expanded", el.newList.hidden ? "false" : "true");
+    plus.textContent = "+";
+    plus.addEventListener("click", function () {
+      if (el.newList.hidden) openNewList(); else closeNewList();
+    });
+    el.lists.appendChild(plus);
+
+    var current = listInfo(currentList);
+    el.deleteList.hidden = isBuiltIn(currentList);
+    el.deleteList.textContent = "Delete the list \u201C" + currentList + "\u201D";
+
+    // A note page: one big text box instead of a checklist.
+    var isNote = current.type === "note";
+    el.addForm.hidden = isNote;
+    el.noteBox.hidden = !isNote;
+    el.pending.hidden = isNote;
+    el.emptyBox.hidden = isNote;
+    if (isNote) {
+      el.doneHead.hidden = true;
+      el.doneList.hidden = true;
+      var text = notes[currentList] || "";
+      if (el.noteText.dataset.list !== currentList || (document.activeElement !== el.noteText && !noteDirty[currentList])) {
+        el.noteText.value = text;
+        el.noteText.dataset.list = currentList;
+      }
+      showNoteInfo();
+      el.share.hidden = !text.trim();
+      if (text.trim()) el.share.href = "https://wa.me/?text=" + encodeURIComponent(currentList + ":\n" + text.trim());
+      el.share.textContent = "Share this note on WhatsApp";
+      return;
+    }
+    el.share.textContent = "Share this list on WhatsApp";
+    el.addInput.placeholder = current.placeholder;
 
     var mine = items.filter(function (it) { return it.list === currentList; });
     var open = mine.filter(function (it) { return !it.done; })
@@ -394,7 +536,7 @@ const CONFIG = {
     tick.addEventListener("click", function () {
       it.done = !it.done;
       it.doneAt = it.done ? Date.now() : 0;
-      store(CACHE_KEY, JSON.stringify(items));
+      saveCache();
       render();
       send({ action: "todoSet", id: it.id, done: it.done });
     });
@@ -405,13 +547,111 @@ const CONFIG = {
     del.textContent = "×";
     del.addEventListener("click", function () {
       items = items.filter(function (x) { return x !== it; });
-      store(CACHE_KEY, JSON.stringify(items));
+      saveCache();
       render();
       send({ action: "todoDelete", id: it.id });
     });
     li.appendChild(tick); li.appendChild(del);
     return li;
   }
+
+  /* ---------- notes ---------- */
+
+  function showNoteInfo() {
+    var made = serverLists.filter(function (l) { return l.name === currentList; })[0];
+    if (noteDirty[currentList]) el.noteInfo.textContent = "Saving as you type...";
+    else if (made && made.updated) {
+      el.noteInfo.textContent = "Saved \u00B7 last changed " + new Date(made.updated)
+        .toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    } else el.noteInfo.textContent = "";
+  }
+
+  // Sends the note a moment after typing stops, or straight away when leaving it.
+  function flushNote() {
+    if (!noteTimer) return;
+    clearTimeout(noteTimer);
+    noteTimer = null;
+    var name = el.noteText.dataset.list;
+    if (!name || !noteDirty[name]) return;
+    noteDirty[name] = false;
+    send({ action: "todoNoteSave", name: name, text: notes[name] || "", icon: listInfo(name).icon });
+  }
+
+  el.noteText.addEventListener("input", function () {
+    var name = el.noteText.dataset.list || currentList;
+    notes[name] = el.noteText.value;
+    noteDirty[name] = true;
+    saveCache();
+    showNoteInfo();
+    var text = el.noteText.value.trim();
+    el.share.hidden = !text;
+    if (text) el.share.href = "https://wa.me/?text=" + encodeURIComponent(name + ":\n" + text);
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(flushNote, 1200);
+  });
+  el.noteText.addEventListener("blur", flushNote);
+
+  /* ---------- new lists ---------- */
+
+  function openNewList() {
+    el.newList.hidden = false;
+    el.newListMsg.hidden = true;
+    el.newListName.value = "";
+    setType("check");
+    render();
+    el.newListName.focus();
+  }
+  function closeNewList() {
+    if (el.newList.hidden) return;
+    el.newList.hidden = true;
+    render();
+  }
+  function setType(type) {
+    newListType = type;
+    Array.prototype.forEach.call(el.newList.querySelectorAll(".type-chip"), function (b) {
+      b.setAttribute("aria-pressed", b.dataset.type === type ? "true" : "false");
+    });
+  }
+
+  el.newList.addEventListener("click", function (e) {
+    var chip = e.target.closest(".type-chip");
+    if (chip) setType(chip.dataset.type);
+  });
+  el.newListCancel.addEventListener("click", closeNewList);
+  el.newList.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = el.newListName.value.trim().replace(/\s+/g, " ");
+    var clash = listNames().filter(function (n) { return n.toLowerCase() === name.toLowerCase(); })[0];
+    if (!name) { el.newListMsg.textContent = "Type a name for the list."; el.newListMsg.hidden = false; return; }
+    if (clash) { el.newListMsg.textContent = "There is already a list called " + clash + "."; el.newListMsg.hidden = false; return; }
+    var icon = newListType === "note" ? "📝" : "📋";
+    serverLists.push({ name: name, type: newListType, icon: icon, text: "", updated: 0 });
+    flushNote();
+    currentList = name;
+    store(LIST_KEY, name);
+    el.newList.hidden = true;
+    saveCache();
+    render();
+    send({ action: "todoListAdd", name: name, type: newListType, icon: icon });
+    if (newListType === "note") el.noteText.focus(); else el.addInput.focus();
+  });
+
+  el.deleteList.addEventListener("click", function () {
+    var name = currentList;
+    if (isBuiltIn(name)) return;
+    var count = items.filter(function (it) { return it.list === name; }).length;
+    var what = listInfo(name).type === "note" ? "the note" : (count ? count + (count === 1 ? " item" : " items") : "nothing yet");
+    if (!window.confirm("Delete \u201C" + name + "\u201D? It holds " + what + ". This cannot be undone.")) return;
+    serverLists = serverLists.filter(function (l) { return l.name !== name; });
+    items = items.filter(function (it) { return it.list !== name; });
+    delete notes[name];
+    delete noteDirty[name];
+    currentList = CONFIG.LISTS[0].name;
+    store(LIST_KEY, currentList);
+    saveCache();
+    render();
+    send({ action: "todoListDelete", name: name });
+  });
 
   /* ---------- passcode ---------- */
 
@@ -465,7 +705,7 @@ const CONFIG = {
     items.push(it);
     el.addInput.value = "";
     el.addInput.focus();
-    store(CACHE_KEY, JSON.stringify(items));
+    saveCache();
     render();
     send({ action: "todoAdd", id: it.id, list: it.list, task: it.task });
   });
@@ -474,19 +714,24 @@ const CONFIG = {
   el.clearDone.addEventListener("click", function () {
     var list = currentList;
     items = items.filter(function (it) { return !(it.list === list && it.done); });
-    store(CACHE_KEY, JSON.stringify(items));
+    saveCache();
     render();
     send({ action: "todoClearDone", list: list });
   });
 
   // Coming back to the page picks up changes made on another phone.
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible" && !el.main.hidden && !inFlight && Date.now() - lastLoad > 30000) refresh();
+    if (document.visibilityState === "hidden") { flushNote(); return; }
+    if (!el.main.hidden && !inFlight && Date.now() - lastLoad > 30000) refresh();
   });
 
   /* ---------- start ---------- */
 
   try { items = JSON.parse(store(CACHE_KEY) || "[]") || []; } catch (e) { items = []; }
+  try {
+    var savedLists = JSON.parse(store(LISTS_CACHE_KEY) || "null");
+    if (savedLists) { serverLists = savedLists.lists || []; notes = savedLists.notes || {}; }
+  } catch (e) { /* start without them */ }
   currentList = store(LIST_KEY);
 
   if (!store(PASS_KEY)) {
