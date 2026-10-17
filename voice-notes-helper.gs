@@ -51,6 +51,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("Recipe page")
     .addItem("Link voice notes", "linkVoiceNotes")
+    .addItem("Fill Instagram pictures", "fillReelPictures")
     .addToUi();
 }
 
@@ -126,6 +127,11 @@ function doPost(e) {
       lock.waitLock(20000);
       return addDish(req);
     }
+    if (req.action === "reelPicture") {
+      var pic = reelPicture(req.link);
+      return reply(pic ? { ok: true, mimeType: pic.mimeType, data: pic.data }
+                       : { ok: false, error: "Could not get this reel's picture." });
+    }
     if (req.action === "notifySetup") return notifySetup(req);
     if (req.action === "lockDown") return lockDown();
     if (/^todo/.test(String(req.action || ""))) {
@@ -178,6 +184,7 @@ function doPost(e) {
 // photo: { mimeType, data } (optional) }. "youtube" is the video link: YouTube or
 // Instagram. Adds a row to the dish list. If that dish is already in that section,
 // it asks first, and with replace: true swaps in the new link (and photo) instead.
+// An Instagram link sent without a photo gets the reel's own picture.
 function addDish(req) {
   var section = String(req.section || "").trim().slice(0, 60);
   var dish = String(req.dish || "").trim().slice(0, 120);
@@ -194,6 +201,7 @@ function addDish(req) {
   if (cols.section < 0 || cols.link < 0) {
     return reply({ ok: false, error: "The dish list needs Section and YouTube link headings in row 1." });
   }
+  if (!(req.photo && req.photo.data) && isInstagram(youtube)) req.photo = reelPicture(youtube);
 
   for (var r = 1; r < data.length; r++) {
     if (clean(data[r][cols.name]) === clean(dish) && clean(data[r][cols.section]) === clean(section)) {
@@ -365,33 +373,98 @@ function readLists(sheet) {
     });
 }
 
+/* ---------------- Instagram pictures ---------------- */
+
+function isInstagram(link) { return /(?:instagram\.com|instagr\.am)\//i.test(String(link || "")); }
+
+// Sheet menu: gives every Instagram dish without a picture the reel's own picture.
+function fillReelPictures() {
+  var sheet = dishSheet();
+  var data = sheet.getDataRange().getValues();
+  var header = data[0];
+  var cols = listColumns(header);
+  var done = 0, failed = [];
+  for (var r = 1; r < data.length; r++) {
+    var link = String(data[r][cols.link] || "");
+    if (!isInstagram(link) || (cols.image >= 0 && String(data[r][cols.image] || "").trim())) continue;
+    var pic = reelPicture(link);
+    if (pic && savePhoto(sheet, header, cols, r + 1, String(data[r][cols.name]).trim(), pic)) {
+      done++;
+      cols = listColumns(sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0]);
+    } else failed.push(String(data[r][cols.name]).trim());
+  }
+  var text = done + " picture(s) added." + (failed.length ? " Could not get: " + failed.join(", ") : "");
+  try { SpreadsheetApp.getUi().alert(text); } catch (e) { /* run from the editor */ }
+  return text;
+}
+
 /* ---------------- notifications (ntfy) ---------------- */
 
 // <external>
-// Sends "New in Things to order: Milk" to every phone subscribed to the channel.
-// A failed notification never stops the to-do from being saved.
-function notifyNewTodo(list, task) {
-  var topic = PropertiesService.getScriptProperties().getProperty("NTFY_TOPIC");
-  if (!topic) return;
-  var tags = { "things to order": "shopping_cart", "home chores": "broom" }[list.toLowerCase()] || "pushpin";
+// The cover picture of a public Instagram reel or post, taken from Instagram's own
+// embed page (no login needed), about 720px wide. Returns { mimeType, data } or null.
+function reelPicture(link) {
+  var m = String(link || "").match(/(?:instagram\.com|instagr\.am)\/(?:[\w.]+\/)?(?:reels?|p|tv)\/([A-Za-z0-9_-]+)/i);
+  if (!m) return null;
   try {
-    UrlFetchApp.fetch("https://ntfy.sh", {
+    var page = UrlFetchApp.fetch("https://www.instagram.com/p/" + m[1] + "/embed/captioned/", { muteHttpExceptions: true });
+    if (page.getResponseCode() !== 200) return null;
+    var tag = (page.getContentText().match(/<img[^>]*class="EmbeddedMediaImage"[^>]*>/) || [])[0];
+    if (!tag) return null;
+    var unescape = function (u) { return u.replace(/&amp;/g, "&"); };
+    var src = unescape((tag.match(/\ssrc="([^"]+)"/) || [])[1] || "");
+    var best = 0;
+    ((tag.match(/srcset="([^"]+)"/) || [])[1] || "").split(",").forEach(function (part) {
+      var bits = part.trim().split(/\s+/), w = parseInt(bits[1], 10);
+      if (bits[0] && w >= 640 && (!best || w < best)) { best = w; src = unescape(bits[0]); }
+    });
+    if (!/^https:\/\/[\w.-]+\.(cdninstagram\.com|fbcdn\.net)\//.test(src)) return null;
+    var img = UrlFetchApp.fetch(src, { muteHttpExceptions: true });
+    if (img.getResponseCode() !== 200) return null;
+    var type = String(img.getHeaders()["Content-Type"] || "image/jpeg").split(";")[0].trim().toLowerCase();
+    if (!/^image\/(jpeg|png|webp)$/.test(type)) return null;
+    return { mimeType: type, data: Utilities.base64Encode(img.getContent()) };
+  } catch (e) {
+    return null;
+  }
+}
+
+// Sends "New in Things to order: Milk" to every phone subscribed to the channel.
+// A failed notification never stops the to-do from being saved. Returns ntfy's answer.
+function notifyNewTodo(list, task) {
+  var props = PropertiesService.getScriptProperties();
+  var topic = props.getProperty("NTFY_TOPIC");
+  if (!topic) return "no channel set";
+  var tags = { "things to order": "shopping_cart", "home chores": "broom" }[list.toLowerCase()] || "pushpin";
+  // An ntfy access token (Script Property NTFY_TOKEN, from a free ntfy.sh account) gives
+  // the script its own daily allowance instead of the one shared by all Google servers.
+  var token = props.getProperty("NTFY_TOKEN");
+  try {
+    var res = UrlFetchApp.fetch("https://ntfy.sh", {
       method: "post",
       contentType: "application/json",
+      headers: token ? { Authorization: "Bearer " + token } : {},
       payload: JSON.stringify({ topic: topic, title: "New in " + list, message: task, tags: [tags], click: TODOS_PAGE_URL }),
       muteHttpExceptions: true
     });
-  } catch (e) { /* no notification this time */ }
+    return res.getResponseCode() === 200 ? "sent" : "ntfy said " + res.getResponseCode() + ": " + res.getContentText().slice(0, 160);
+  } catch (e) {
+    return "not sent: " + e.message;
+  }
 }
 
-// { key, action: "notifySetup", topic, test } sets the private channel name
+// { key, action: "notifySetup", topic, token, test } sets the private channel name
 // (letters, numbers, - and _; at least 12) and can send a test notification.
 function notifySetup(req) {
   var topic = String(req.topic || "").trim();
   if (!/^[A-Za-z0-9_-]{12,64}$/.test(topic)) return reply({ ok: false, error: "Channel name must be 12-64 letters, numbers, - or _." });
   PropertiesService.getScriptProperties().setProperty("NTFY_TOPIC", topic);
-  if (req.test) notifyNewTodo("Home To-dos", "Notifications are on. New to-dos will show up here.");
-  return reply({ ok: true });
+  if (req.token !== undefined) {
+    if (req.token) PropertiesService.getScriptProperties().setProperty("NTFY_TOKEN", String(req.token).trim());
+    else PropertiesService.getScriptProperties().deleteProperty("NTFY_TOKEN");
+  }
+  var sent = req.test ? notifyNewTodo("Home To-dos", "Notifications are on. New to-dos will show up here.") : "";
+  return reply({ ok: true, test: sent });
 }
 
 // Run this once from the script editor (Run button) to give the script

@@ -21,6 +21,8 @@ time the page is used), not in the recipe sheet.
 **ntfy** app (Android and iPhone). Install ntfy, tap **+**, and subscribe to the
 Home Suite channel name (kept in the helper script's settings, not in this
 repository; ask the owner for it). Tapping a notification opens To-dos.
+Google's servers share ntfy's free daily allowance, so the script sends with an
+access token from a free ntfy.sh account (kept in the script's settings).
 
 **More lists and notes:** tap **+** after the list buttons, type a name, choose
 **☑ Checklist** (items to tick off) or **📝 Note** (free writing), and tap
@@ -81,11 +83,13 @@ bottom of the recipe page):
 
 1. **Video link:** a YouTube or Instagram reel link. Tap **Paste** (on a laptop,
    press Ctrl+V or ⌘V in the box). For YouTube a preview shows the video's
-   picture, title and channel; Instagram does not share its pictures, so add a
-   photo for those (a screenshot of the reel works well).
-   **Photo (optional):** picked from the phone or laptop, made small, and saved
-   in the **Recipe photos** folder in your Drive; it is shown instead of the
-   video's own picture. Instagram dishes get a small "Reel" label for the cook.
+   picture, title and channel. For Instagram the reel's own picture is fetched
+   by itself and saved in the **Recipe photos** folder (private reels can't be
+   fetched; add a photo for those). For dishes added earlier, use the sheet menu
+   **Recipe page → Fill Instagram pictures**.
+   **Photo (optional):** only if you want your own picture; picked from the
+   phone or laptop, made small, saved in **Recipe photos**, and shown instead of
+   the video's own picture. Instagram dishes get a small "Reel" label for the cook.
 2. **Dish name:** in any language.
 3. **Section:** tap Breakfast, Lunch/Dinner, or **+ New section** to start one
    (for example Snacks).

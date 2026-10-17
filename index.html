@@ -127,8 +127,6 @@ const CONFIG = {
   .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
   header { padding: 18px 0 4px; }
-  .brand { display: flex; align-items: center; gap: 10px; }
-  .cat { width: 46px; height: 50px; flex: none; }
   h1 { margin: 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
   .subtitle { margin: 4px 0 0; color: var(--muted); font-size: 1.05rem; }
 
@@ -519,6 +517,61 @@ const CONFIG = {
   .eyebrow, .summary .label, .done-toggle {
     text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: 600;
   }
+  /* The cat: walks along the title row, licks a paw, purrs, walks back and naps.
+     Only transforms and opacity move, so it costs almost nothing. */
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .cat-lane { position: relative; flex: 1 1 auto; min-width: 64px; max-width: 420px; height: 50px; overflow: hidden; contain: layout paint; }
+  .kitty { position: absolute; left: 0; bottom: 0; width: 64px; height: 50px; overflow: visible;
+           transition: transform 4s linear; will-change: transform; color: var(--muted); }
+  .kitty * { transform-box: view-box; }
+  .kitty .k-all  { transform-origin: 32px 22px; transition: transform .25s; }
+  .kitty.flip .k-all { transform: scaleX(-1); }
+  .kitty .k-zzz { transform-box: fill-box; transform-origin: center; }
+  .kitty.flip .k-zzz { transform: scaleX(-1); }
+  .kitty .k-fit  { transition: transform .5s ease; }
+  .kitty .k-body { transform-origin: 30px 30px; }
+  .kitty .k-head { transform-origin: 43px 21px; transition: transform .5s ease; }
+  .kitty .k-tail { transform-origin: 16px 22px; animation: k-sway 3s ease-in-out infinite alternate; }
+  .kitty .k-leg  { transition: transform .4s ease; }
+  .kitty .k-leg.fb { transform-origin: 21.2px 27px; } .kitty .k-leg.nb { transform-origin: 23.7px 27px; }
+  .kitty .k-leg.ff { transform-origin: 41.2px 27px; } .kitty .k-leg.nf { transform-origin: 43.7px 27px; }
+  .kitty .k-shut, .kitty .k-tongue, .kitty .k-zzz, .kitty .k-purr { opacity: 0; transition: opacity .4s; }
+  .kitty .k-tongue { transform-origin: 56px 21px; }
+
+  .kitty.walk .k-leg.nf, .kitty.walk .k-leg.fb { animation: k-step .5s ease-in-out infinite alternate; }
+  .kitty.walk .k-leg.ff, .kitty.walk .k-leg.nb { animation: k-step .5s ease-in-out infinite alternate-reverse; }
+  .kitty.walk .k-body { animation: k-bob .25s ease-in-out infinite alternate; }
+
+  .kitty.lick .k-head { transform: rotate(14deg); }
+  .kitty.lick .k-leg.nf { transform: rotate(-100deg); }
+  .kitty.lick .k-tongue { opacity: 1; animation: k-lick .45s ease-in-out infinite alternate; }
+  .kitty.lick .k-open, .kitty.purr .k-open, .kitty.sleep .k-open { opacity: 0; }
+  .kitty.lick .k-shut, .kitty.purr .k-shut, .kitty.sleep .k-shut { opacity: 1; }
+
+  .kitty.purr .k-body { animation: k-purr .09s linear infinite alternate; }
+  .kitty.purr .k-purr { opacity: 1; animation: k-fade .8s ease-in-out infinite alternate; }
+
+  .kitty.sleep .k-fit { transform: translateY(8px); }
+  .kitty.sleep .k-leg { transform: scaleY(.2); }
+  .kitty.sleep .k-head { transform: rotate(16deg) translateY(1px); }
+  .kitty.sleep .k-tail { animation: none; transform: rotate(-70deg); }
+  .kitty.sleep .k-body { animation: k-breathe 2.4s ease-in-out infinite; }
+  .kitty.sleep .k-zzz { opacity: 1; }
+  .kitty.sleep .k-zzz text { animation: k-float 2.4s ease-out infinite; }
+  .kitty.sleep .k-zzz text + text { animation-delay: 1.2s; }
+
+  @keyframes k-step  { from { transform: rotate(24deg); } to { transform: rotate(-24deg); } }
+  @keyframes k-bob   { to { transform: translateY(-0.8px); } }
+  @keyframes k-sway  { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+  @keyframes k-lick  { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+  @keyframes k-purr  { from { transform: translateX(-0.35px); } to { transform: translateX(0.35px); } }
+  @keyframes k-fade  { from { opacity: .25; } to { opacity: 1; } }
+  @keyframes k-breathe { 50% { transform: scale(1.05, 1.08); } }
+  @keyframes k-float { from { transform: translate(0, 4px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(5px, -6px); opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kitty, .kitty * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 
@@ -527,20 +580,40 @@ const CONFIG = {
   <header>
     <div class="brand">
       <h1 id="title">Recipes</h1>
-      <svg class="cat" viewBox="2 2 54 59" aria-hidden="true" focusable="false">
-        <g fill="#FFC53D">
-          <path d="M14 60 C8 50 12 34 24 30 L34 26 L44 28 C46 40 47 52 46 60 Z"/>
-          <circle cx="41" cy="20" r="10"/>
-          <ellipse cx="48.5" cy="23" rx="4.5" ry="3.6"/>
-          <path d="M32.5 16 L34 3.5 L41 11.5 Z"/>
-          <path d="M42 11 L49.5 4 L50.5 17 Z"/>
-          <path d="M16 59 C4 59 2 48 6 40 C8 36 11 37 9.5 41 C7 47 8 55 17 55 Z"/>
-        </g>
-        <path d="M33 27.5 Q40 32 48 27" fill="none" stroke="#E5484D" stroke-width="2.6" stroke-linecap="round"/>
-        <circle cx="41" cy="33" r="3" fill="#FFCA16"/>
-        <path d="M38 33 A3 3 0 0 0 44 33 Z" fill="#F5F5F7"/>
-        <path d="M38 33 H44" stroke="#000000" stroke-width="0.8"/>
-      </svg>
+      <div class="cat-lane" id="catLane" aria-hidden="true">
+        <svg class="kitty" id="kitty" viewBox="0 -6 64 50" focusable="false">
+          <g class="k-all"><g class="k-fit">
+            <g fill="#FFC53D">
+              <path class="k-tail" d="M17 22 C9 21 5 12 9 5" fill="none" stroke="#FFC53D" stroke-width="4" stroke-linecap="round"/>
+              <rect class="k-leg fb" x="19" y="26" width="4.4" height="12" rx="2.2" opacity=".7"/>
+              <rect class="k-leg ff" x="39" y="26" width="4.4" height="12" rx="2.2" opacity=".7"/>
+              <ellipse class="k-body" cx="30" cy="24" rx="15" ry="8.5"/>
+              <rect class="k-leg nb" x="21.5" y="26" width="4.4" height="12" rx="2.2"/>
+              <rect class="k-leg nf" x="41.5" y="26" width="4.4" height="12" rx="2.2"/>
+            </g>
+            <g class="k-head">
+              <g fill="#FFC53D">
+                <circle cx="48" cy="15" r="8"/>
+                <path d="M41.5 11 L42.5 2 L48 8 Z"/>
+                <path d="M49 7.5 L54.5 2 L55.5 11.5 Z"/>
+                <ellipse cx="54.5" cy="18" rx="4" ry="3.2"/>
+              </g>
+              <ellipse class="k-tongue" cx="56.5" cy="22.5" rx="1.5" ry="2.2" fill="#FF9592"/>
+              <circle cx="58.2" cy="16.6" r="1.1" fill="#E5484D"/>
+              <ellipse class="k-open" cx="51" cy="13.5" rx="1.3" ry="1.8" fill="#21201C"/>
+              <path class="k-shut" d="M49.4 13.8 Q51 15.4 52.6 13.8" fill="none" stroke="#21201C" stroke-width="1.1" stroke-linecap="round"/>
+              <path d="M41.5 19.5 Q46 24 51.5 21" fill="none" stroke="#E5484D" stroke-width="2.2" stroke-linecap="round"/>
+              <circle cx="47" cy="23" r="1.7" fill="#FFCA16"/>
+            </g>
+            <g class="k-zzz" fill="currentColor" font-size="9" font-weight="700" font-family="system-ui, sans-serif">
+              <text x="50" y="6">z</text><text x="56" y="2" font-size="7">z</text>
+            </g>
+          </g></g>
+          <g class="k-purr" fill="none" stroke="#FFCA16" stroke-width="1.2" stroke-linecap="round">
+            <path d="M61 21 q1.6 2 0 4"/><path d="M63 19.5 q2.4 3.5 0 7"/>
+          </g>
+        </svg>
+      </div>
     </div>
     <p class="subtitle" id="subtitle"></p>
   </header>
@@ -602,7 +675,7 @@ const CONFIG = {
         <label class="paste-btn photo-btn">Choose photo<input id="addPhoto" type="file" accept="image/*" hidden></label>
         <button class="paste-btn" id="addPhotoClear" type="button" hidden>Remove</button>
       </div>
-      <span class="hint" id="addPhotoHint">Shown instead of the video's own picture. For Instagram, a screenshot of the reel works well.</span>
+      <span class="hint" id="addPhotoHint">Only if you want your own picture. Instagram reels get the reel's picture by themselves.</span>
     </div>
     <div class="field">Section
       <div class="chips chips-wrap" id="addSections" style="margin-top:6px"></div>
@@ -1786,6 +1859,7 @@ const CONFIG = {
     photoHint: document.getElementById("addPhotoHint")
   };
   var addPhoto = null;      // { mimeType, data } of the chosen photo, made small
+  var reelPhoto = null;     // { mimeType, data, preview } of the pasted reel's own picture
 
   // A YouTube or Instagram link, tidied up; null when it is neither.
   // Share sheets often copy extra words around the link; only the link is used.
@@ -1847,14 +1921,36 @@ const CONFIG = {
     ad.hint.className = "hint";
     if (previewFor === video.kind + video.id) return;
     previewFor = video.kind + video.id;
+    reelPhoto = null;
     ad.preview.hidden = false;
 
     if (video.kind === "instagram") {
-      // Instagram does not share its pictures with other sites, so ask for a photo instead.
+      // Instagram only gives its pictures to the helper script, which fetches the reel's cover.
+      var reelKey = previewFor;
       ad.thumb.hidden = true;
       ad.instaIcon.hidden = false;
       ad.title.textContent = "Instagram reel";
-      ad.by.textContent = addPhoto ? "Your photo will be shown for it." : "Add a photo below so the cook sees a picture.";
+      ad.by.textContent = "Getting the reel's picture...";
+      fetch(CONFIG.VOICE_UPLOAD_URL, {
+        method: "POST",
+        body: JSON.stringify({ key: deviceKey() || "", action: "reelPicture", link: video.url })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (out) {
+          if (previewFor !== reelKey) return;
+          if (!out || !out.ok || !out.data) throw new Error();
+          var dataUrl = "data:" + (out.mimeType || "image/jpeg") + ";base64," + out.data;
+          reelPhoto = { mimeType: out.mimeType || "image/jpeg", data: out.data, preview: dataUrl };
+          ad.thumb.src = dataUrl;
+          ad.thumb.hidden = false;
+          ad.instaIcon.hidden = true;
+          ad.by.textContent = reelNote();
+        })
+        .catch(function () {
+          if (previewFor !== reelKey) return;
+          ad.by.textContent = addPhoto ? "Your photo will be shown for it."
+            : "Could not get the reel's picture (it may be private). It will be tried again when you save, or add a photo below.";
+        });
       return;
     }
     var id = video.id, key = previewFor;
@@ -1876,6 +1972,10 @@ const CONFIG = {
       });
   }
 
+  function reelNote() {
+    return addPhoto ? "Your own photo will be shown instead of this picture." : "The cook will see this picture.";
+  }
+
   // Shrinks the chosen photo on the phone (longest side 1280px) before it is sent.
   function choosePhoto(file) {
     if (!file || !/^image\//.test(file.type)) return;
@@ -1893,7 +1993,7 @@ const CONFIG = {
       ad.photoPreview.src = dataUrl;
       ad.photoPreview.hidden = false;
       ad.photoClear.hidden = false;
-      if (videoLink(ad.link.value) && videoLink(ad.link.value).kind === "instagram") ad.by.textContent = "Your photo will be shown for it.";
+      if (videoLink(ad.link.value) && videoLink(ad.link.value).kind === "instagram") ad.by.textContent = reelPhoto ? reelNote() : "Your photo will be shown for it.";
     };
     img.onerror = function () {
       URL.revokeObjectURL(url);
@@ -1921,6 +2021,7 @@ const CONFIG = {
     if (!section) { addMessage("Pick a section, or type the new section's name.", "error"); return; }
     if (!key) { showView(); return; }
 
+    var picked = addPhoto || (video.kind === "instagram" ? reelPhoto : null);
     ad.save.disabled = true;
     ad.save.textContent = "Saving...";
     addMessage("");
@@ -1928,7 +2029,7 @@ const CONFIG = {
       method: "POST",
       body: JSON.stringify({
         key: key, action: "addDish", section: section, dish: name, youtube: video.url, replace: addReplace,
-        photo: addPhoto ? { mimeType: addPhoto.mimeType, data: addPhoto.data } : null
+        photo: picked ? { mimeType: picked.mimeType, data: picked.data } : null
       })
     })
       .then(function (res) { return res.json(); })
@@ -1949,7 +2050,7 @@ const CONFIG = {
         var url = video.url;
         var picture = out.image ? imageUrl(out.image) : null;
         var pictureId = out.image ? driveFileId(out.image) : null;
-        if (pictureId && addPhoto) photoCache[pictureId] = Promise.resolve(addPhoto.preview);
+        if (pictureId && picked) photoCache[pictureId] = Promise.resolve(picked.preview);
         var existing = target.dishes.filter(function (d) { return d.name.toLowerCase() === name.toLowerCase(); })[0];
         if (existing) {
           existing.link = url;
@@ -2020,7 +2121,7 @@ const CONFIG = {
   ad.photo.addEventListener("change", function () { choosePhoto(ad.photo.files && ad.photo.files[0]); });
   ad.photoClear.addEventListener("click", function () {
     clearPhoto();
-    if (videoLink(ad.link.value) && videoLink(ad.link.value).kind === "instagram") ad.by.textContent = "Add a photo below so the cook sees a picture.";
+    if (reelPhoto) ad.by.textContent = reelNote();
   });
   ad.sections.addEventListener("click", function (e) {
     var b = e.target.closest(".chip");
@@ -2085,6 +2186,42 @@ const CONFIG = {
   };
 
   load();
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+    /* The cat in the title row: walk right, lick a paw, purr, walk back, nap, repeat. */
+    (function catLife() {
+      var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
+      if (!lane || !cat) return;
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var x = 0, facing = 1;
+      function state(name) { cat.setAttribute("class", "kitty " + name + (facing < 0 ? " flip" : "")); }
+      function walkTo(target, then) {
+        target = Math.max(0, Math.round(target));
+        if (Math.abs(target - x) < 4) { then(); return; }
+        facing = target > x ? 1 : -1;
+        state("walk");
+        var secs = Math.max(1.5, Math.abs(target - x) / 26);
+        cat.style.transitionDuration = secs + "s";
+        x = target;
+        cat.style.transform = "translateX(" + x + "px)";
+        setTimeout(then, secs * 1000);
+      }
+      function rest(name, secs, then) { state(name); setTimeout(then, secs * 1000); }
+      function life() {
+        walkTo(lane.clientWidth - 64, function () {
+          rest("lick", 4, function () {
+            rest("purr", 3, function () {
+              walkTo(0, function () { rest("sleep", 9, life); });
+            });
+          });
+        });
+      }
+      state("");
+      setTimeout(life, 1500);
+    })();
 })();
 </script>
 </body>

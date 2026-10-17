@@ -72,12 +72,18 @@ session.
   adds a sheet menu that links Drive files to dishes by file name.
 - The add page (site address + `#add`) adds a dish (YouTube or Instagram
   link, name, section, optional photo saved to the Drive folder Recipe photos) as a new row of the dish list through the same helper script; an
+  Instagram link gets the reel's own picture automatically (the helper reads it
+  from Instagram's public embed page: `reelPicture`; sheet menu "Fill Instagram
+  pictures" does the same for older rows); an
   existing dish in that section only has its video link replaced on a second tap.
 - New to-dos send a phone notification through ntfy.sh. The private channel
   name lives only in the script's Script Properties (`NTFY_TOPIC`, set with the
   `notifySetup` request); never put it in the repo. Sending needs the script's
   external-request permission, which the owner grants by running
-  `authorizeNotifications` once in the script editor.
+  `authorizeNotifications` once in the script editor (done). Google's servers
+  share ntfy's free daily allowance, so sending needs an ntfy access token from
+  the owner's free ntfy.sh account (Script Property `NTFY_TOKEN`, set with
+  `notifySetup` `token`); never put it in the repo.
 - The day's menu lives in the sheet's "Menu" tab (Date, Meal, Dish name, Note),
   read live through the edit link. The plan page (site address + `#plan`) saves
   it through the same helper script, one group per meal in `CONFIG.MEALS`
@@ -108,6 +114,9 @@ session.
   (breakfast), Leaf #248A3D / #30D158 (lunch, WhatsApp), Indigo #3634A3 /
   #5E5CE6 (dinner), Ember (record, delete, errors; Radix red) fill #E5484D, text #CE2C31 / #FF9592. Each app takes
   one accent; meals keep their colour everywhere.
+- The cat: every page has the same small animated cat in the title row (one
+  SVG, `catLife` timer): it walks across, licks a paw, purrs, walks back and
+  naps, using only transforms and opacity, and stands still for reduced motion.
 - After any change, also open `home/` and `todos/` at 390px width and confirm
   they load, their links work, and nothing scrolls sideways.
 - Explain what you changed in plain language, without code terms.

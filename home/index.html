@@ -231,6 +231,61 @@ const CONFIG = {
   .eyebrow, .summary .label, .done-toggle {
     text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: 600;
   }
+  /* The cat: walks along the title row, licks a paw, purrs, walks back and naps.
+     Only transforms and opacity move, so it costs almost nothing. */
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .cat-lane { position: relative; flex: 1 1 auto; min-width: 64px; max-width: 420px; height: 50px; overflow: hidden; contain: layout paint; }
+  .kitty { position: absolute; left: 0; bottom: 0; width: 64px; height: 50px; overflow: visible;
+           transition: transform 4s linear; will-change: transform; color: var(--muted); }
+  .kitty * { transform-box: view-box; }
+  .kitty .k-all  { transform-origin: 32px 22px; transition: transform .25s; }
+  .kitty.flip .k-all { transform: scaleX(-1); }
+  .kitty .k-zzz { transform-box: fill-box; transform-origin: center; }
+  .kitty.flip .k-zzz { transform: scaleX(-1); }
+  .kitty .k-fit  { transition: transform .5s ease; }
+  .kitty .k-body { transform-origin: 30px 30px; }
+  .kitty .k-head { transform-origin: 43px 21px; transition: transform .5s ease; }
+  .kitty .k-tail { transform-origin: 16px 22px; animation: k-sway 3s ease-in-out infinite alternate; }
+  .kitty .k-leg  { transition: transform .4s ease; }
+  .kitty .k-leg.fb { transform-origin: 21.2px 27px; } .kitty .k-leg.nb { transform-origin: 23.7px 27px; }
+  .kitty .k-leg.ff { transform-origin: 41.2px 27px; } .kitty .k-leg.nf { transform-origin: 43.7px 27px; }
+  .kitty .k-shut, .kitty .k-tongue, .kitty .k-zzz, .kitty .k-purr { opacity: 0; transition: opacity .4s; }
+  .kitty .k-tongue { transform-origin: 56px 21px; }
+
+  .kitty.walk .k-leg.nf, .kitty.walk .k-leg.fb { animation: k-step .5s ease-in-out infinite alternate; }
+  .kitty.walk .k-leg.ff, .kitty.walk .k-leg.nb { animation: k-step .5s ease-in-out infinite alternate-reverse; }
+  .kitty.walk .k-body { animation: k-bob .25s ease-in-out infinite alternate; }
+
+  .kitty.lick .k-head { transform: rotate(14deg); }
+  .kitty.lick .k-leg.nf { transform: rotate(-100deg); }
+  .kitty.lick .k-tongue { opacity: 1; animation: k-lick .45s ease-in-out infinite alternate; }
+  .kitty.lick .k-open, .kitty.purr .k-open, .kitty.sleep .k-open { opacity: 0; }
+  .kitty.lick .k-shut, .kitty.purr .k-shut, .kitty.sleep .k-shut { opacity: 1; }
+
+  .kitty.purr .k-body { animation: k-purr .09s linear infinite alternate; }
+  .kitty.purr .k-purr { opacity: 1; animation: k-fade .8s ease-in-out infinite alternate; }
+
+  .kitty.sleep .k-fit { transform: translateY(8px); }
+  .kitty.sleep .k-leg { transform: scaleY(.2); }
+  .kitty.sleep .k-head { transform: rotate(16deg) translateY(1px); }
+  .kitty.sleep .k-tail { animation: none; transform: rotate(-70deg); }
+  .kitty.sleep .k-body { animation: k-breathe 2.4s ease-in-out infinite; }
+  .kitty.sleep .k-zzz { opacity: 1; }
+  .kitty.sleep .k-zzz text { animation: k-float 2.4s ease-out infinite; }
+  .kitty.sleep .k-zzz text + text { animation-delay: 1.2s; }
+
+  @keyframes k-step  { from { transform: rotate(24deg); } to { transform: rotate(-24deg); } }
+  @keyframes k-bob   { to { transform: translateY(-0.8px); } }
+  @keyframes k-sway  { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+  @keyframes k-lick  { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+  @keyframes k-purr  { from { transform: translateX(-0.35px); } to { transform: translateX(0.35px); } }
+  @keyframes k-fade  { from { opacity: .25; } to { opacity: 1; } }
+  @keyframes k-breathe { 50% { transform: scale(1.05, 1.08); } }
+  @keyframes k-float { from { transform: translate(0, 4px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(5px, -6px); opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kitty, .kitty * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 
@@ -238,7 +293,43 @@ const CONFIG = {
 <div class="wrap">
   <header>
     <span class="eyebrow" id="greeting"></span>
-    <h1 id="title">Home Suite</h1>
+    <div class="brand">
+      <h1 id="title">Home Suite</h1>
+      <div class="cat-lane" id="catLane" aria-hidden="true">
+        <svg class="kitty" id="kitty" viewBox="0 -6 64 50" focusable="false">
+          <g class="k-all"><g class="k-fit">
+            <g fill="#FFC53D">
+              <path class="k-tail" d="M17 22 C9 21 5 12 9 5" fill="none" stroke="#FFC53D" stroke-width="4" stroke-linecap="round"/>
+              <rect class="k-leg fb" x="19" y="26" width="4.4" height="12" rx="2.2" opacity=".7"/>
+              <rect class="k-leg ff" x="39" y="26" width="4.4" height="12" rx="2.2" opacity=".7"/>
+              <ellipse class="k-body" cx="30" cy="24" rx="15" ry="8.5"/>
+              <rect class="k-leg nb" x="21.5" y="26" width="4.4" height="12" rx="2.2"/>
+              <rect class="k-leg nf" x="41.5" y="26" width="4.4" height="12" rx="2.2"/>
+            </g>
+            <g class="k-head">
+              <g fill="#FFC53D">
+                <circle cx="48" cy="15" r="8"/>
+                <path d="M41.5 11 L42.5 2 L48 8 Z"/>
+                <path d="M49 7.5 L54.5 2 L55.5 11.5 Z"/>
+                <ellipse cx="54.5" cy="18" rx="4" ry="3.2"/>
+              </g>
+              <ellipse class="k-tongue" cx="56.5" cy="22.5" rx="1.5" ry="2.2" fill="#FF9592"/>
+              <circle cx="58.2" cy="16.6" r="1.1" fill="#E5484D"/>
+              <ellipse class="k-open" cx="51" cy="13.5" rx="1.3" ry="1.8" fill="#21201C"/>
+              <path class="k-shut" d="M49.4 13.8 Q51 15.4 52.6 13.8" fill="none" stroke="#21201C" stroke-width="1.1" stroke-linecap="round"/>
+              <path d="M41.5 19.5 Q46 24 51.5 21" fill="none" stroke="#E5484D" stroke-width="2.2" stroke-linecap="round"/>
+              <circle cx="47" cy="23" r="1.7" fill="#FFCA16"/>
+            </g>
+            <g class="k-zzz" fill="currentColor" font-size="9" font-weight="700" font-family="system-ui, sans-serif">
+              <text x="50" y="6">z</text><text x="56" y="2" font-size="7">z</text>
+            </g>
+          </g></g>
+          <g class="k-purr" fill="none" stroke="#FFCA16" stroke-width="1.2" stroke-linecap="round">
+            <path d="M61 21 q1.6 2 0 4"/><path d="M63 19.5 q2.4 3.5 0 7"/>
+          </g>
+        </svg>
+      </div>
+    </div>
   </header>
   <ul class="apps" id="apps"></ul>
   <p class="device" id="device" hidden></p>
@@ -492,6 +583,42 @@ const CONFIG = {
     if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
     return rows;
   }
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+    /* The cat in the title row: walk right, lick a paw, purr, walk back, nap, repeat. */
+    (function catLife() {
+      var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
+      if (!lane || !cat) return;
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      var x = 0, facing = 1;
+      function state(name) { cat.setAttribute("class", "kitty " + name + (facing < 0 ? " flip" : "")); }
+      function walkTo(target, then) {
+        target = Math.max(0, Math.round(target));
+        if (Math.abs(target - x) < 4) { then(); return; }
+        facing = target > x ? 1 : -1;
+        state("walk");
+        var secs = Math.max(1.5, Math.abs(target - x) / 26);
+        cat.style.transitionDuration = secs + "s";
+        x = target;
+        cat.style.transform = "translateX(" + x + "px)";
+        setTimeout(then, secs * 1000);
+      }
+      function rest(name, secs, then) { state(name); setTimeout(then, secs * 1000); }
+      function life() {
+        walkTo(lane.clientWidth - 64, function () {
+          rest("lick", 4, function () {
+            rest("purr", 3, function () {
+              walkTo(0, function () { rest("sleep", 9, life); });
+            });
+          });
+        });
+      }
+      state("");
+      setTimeout(life, 1500);
+    })();
 })();
 </script>
 </body>
