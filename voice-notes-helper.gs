@@ -301,7 +301,6 @@ function todoAction(req) {
     var id = /^[\w-]{6,40}$/.test(String(req.id || "")) ? String(req.id) : Utilities.getUuid().slice(0, 8);
     if (!todoRow(sheet, id)) {
       sheet.appendRow([id, list, task, "", new Date(), ""]);
-      notifyNewTodo(list, task);
     }
   } else if (action === "todoSet" || action === "todoDelete") {
     var row = todoRow(sheet, req.id);
@@ -349,7 +348,15 @@ function todoAction(req) {
     return reply({ ok: false, error: "Unknown request." });
   }
   SpreadsheetApp.flush();
-  return reply({ ok: true, items: readTodos(sheet), lists: readLists(lists) });
+  return reply({ ok: true, items: readTodos(sheet), lists: readLists(lists), notify: notifyTarget() });
+}
+
+// Where the To-dos page sends its "new to-do" notifications. The page sends them
+// itself, from the owner's own connection: ntfy's free allowance is counted per
+// internet address, and every Google server shares one, so sending from here fails.
+function notifyTarget() {
+  var topic = PropertiesService.getScriptProperties().getProperty("NTFY_TOPIC");
+  return topic ? { topic: topic, click: TODOS_PAGE_URL } : null;
 }
 
 function listRow(sheet, name) {

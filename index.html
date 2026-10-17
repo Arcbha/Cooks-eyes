@@ -522,62 +522,164 @@ const CONFIG = {
   .eyebrow, .summary .label, .done-toggle {
     text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: 600;
   }
-  /* The cat (drawn from the owner's ginger-and-white cat, yellow collar, Poké Ball bell):
-     sits, walks along the title row, licks a paw, purrs, walks back and naps.
-     Only transforms and opacity move, so it costs almost nothing. */
+  /* The cat (drawn from the owner's ginger-and-white cat, yellow collar, Poke Ball bell).
+     A small script picks what it does next at random, from about 25 things a cat does;
+     only transforms and opacity move, so it costs almost nothing. */
+  html { scrollbar-gutter: stable; }   /* the page does not shift when a scrollbar appears */
   .brand { display: flex; align-items: center; gap: 10px; }
-  .cat-lane { position: relative; flex: 1 1 auto; min-width: 60px; max-width: 420px; height: 56px; overflow: hidden; contain: layout paint; }
+  .cat-lane { position: relative; flex: 1 1 auto; min-width: 60px; max-width: 420px; height: 56px;
+              overflow: hidden; contain: layout paint; view-transition-name: home-suite-cat; }
+  @view-transition { navigation: auto; }
+  ::view-transition-group(home-suite-cat) { animation-duration: .35s; }
+  /* one cat, not two fading into each other */
+  ::view-transition-old(home-suite-cat) { animation: none; opacity: 0; }
+  ::view-transition-new(home-suite-cat) { animation: none; opacity: 1; }
   .kitty { position: absolute; left: 0; bottom: 0; width: 60px; height: 56px; overflow: visible;
-           transition: transform 4s linear; will-change: transform; color: var(--muted); --kitty-line: rgba(60, 40, 20, 0.16); }
+           transition-property: transform; transition-timing-function: linear; will-change: transform;
+           color: var(--muted); --kitty-line: rgba(60, 40, 20, 0.16); }
   .kitty * { transform-box: view-box; }
   .kitty .k-w { stroke: var(--kitty-line); stroke-width: .5; }
-  .kitty .k-all  { transform-origin: 32px 28px; transition: transform .25s; }
+  .kitty .k-all { transform-origin: 32px 28px; transition: transform .22s; }
   .kitty.flip .k-all { transform: scaleX(-1); }
-  .kitty .k-zzz { transform-box: fill-box; transform-origin: center; }
-  .kitty.flip .k-zzz { transform: scaleX(-1); }
-  .kitty .k-pose { opacity: 0; transition: opacity .3s; }
-  .kitty.walk .k-walk, .kitty.sleep .k-sleep,
-  .kitty.sit .k-sit, .kitty.lick .k-sit, .kitty.purr .k-sit { opacity: 1; }
+  .kitty .k-say, .kitty .k-zzz { transform-box: fill-box; transform-origin: center; }
+  .kitty.flip .k-say, .kitty.flip .k-zzz { transform: scaleX(-1); }
 
-  .kitty .k-sit .k-tail  { transform-origin: 18px 52px; animation: k-sway 3s ease-in-out infinite alternate; }
-  .kitty .k-walk .k-tail { transform-origin: 17px 38px; animation: k-sway 1.6s ease-in-out infinite alternate; }
-  .kitty .k-head { transform-origin: 40px 24px; transition: transform .5s ease; }
-  .kitty .k-leg  { transition: transform .45s ease; }
-  .kitty .k-leg.sn { transform-origin: 42px 37px; }
+  /* poses */
+  .kitty .k-pose { opacity: 0; transition: opacity .25s; }
+  .kitty.p-sit .k-sit, .kitty.p-stand .k-walk, .kitty.p-lie .k-sleep { opacity: 1; }
+
+  /* moving parts and their pivots */
+  .kitty .k-stail { transform-origin: 18px 52px; animation: k-sway 3.2s ease-in-out infinite alternate; }
+  .kitty .k-wtail { transform-origin: 17px 38px; animation: k-sway 2.2s ease-in-out infinite alternate; }
+  .kitty .k-ltail { transform-origin: 46px 53px; }
+  .kitty .k-head, .kitty .k-torso, .kitty .k-leg, .kitty .k-low, .kitty .k-ears, .kitty .k-tail { transition: transform .45s ease; }
+  .kitty .k-shead { transform-origin: 40px 24px; }
+  .kitty .k-whead { transform-origin: 43px 36px; }
+  .kitty .k-lhead { transform-origin: 42px 50px; }
+  .kitty .k-sit .k-ears { transform-origin: 45px 10px; }
+  .kitty .k-walk .k-ears { transform-origin: 48px 25px; }
+  .kitty .k-sleep .k-ears { transform-origin: 46px 39px; }
+  .kitty .k-torso { transform-origin: 23px 42px; }
+  .kitty .k-leg.sf { transform-origin: 38px 37px; } .kitty .k-leg.sn { transform-origin: 42px 37px; }
   .kitty .k-leg.fb { transform-origin: 21.2px 43px; } .kitty .k-leg.nb { transform-origin: 23.7px 43px; }
   .kitty .k-leg.ff { transform-origin: 41.2px 43px; } .kitty .k-leg.nf { transform-origin: 43.7px 43px; }
-  .kitty .k-shut, .kitty .k-tongue, .kitty .k-purr { opacity: 0; transition: opacity .4s; }
-  .kitty .k-tongue { transform-origin: 55.8px 21.5px; }
+  .kitty .k-scratch { transform-origin: 24px 46px; }
   .kitty .k-breathe { transform-origin: 30px 54px; }
+  .kitty .k-mouth { transform-origin: 54.4px 21.4px; transform: scale(0); }
+  .kitty .k-tongue { transform-origin: 55.8px 21.5px; }
+  .kitty .k-open { transform-box: fill-box; transform-origin: center; animation: k-blink 5.5s infinite; }
+  .kitty .k-shut, .kitty .k-tongue, .kitty .k-purr, .kitty .k-say, .kitty .k-zzz, .kitty .k-scratch { opacity: 0; transition: opacity .3s; }
+  .kitty .k-lhead .k-open { opacity: 0; }
+  .kitty .k-lhead .k-shut { opacity: 1; }
 
-  .kitty.walk .k-leg.nf, .kitty.walk .k-leg.fb { animation: k-step .5s ease-in-out infinite alternate; }
-  .kitty.walk .k-leg.ff, .kitty.walk .k-leg.nb { animation: k-step .5s ease-in-out infinite alternate-reverse; }
-  .kitty.walk .k-bob { animation: k-bob .25s ease-in-out infinite alternate; }
+  /* eyes closed */
+  .kitty.a-blink .k-open, .kitty.a-lick .k-open, .kitty.a-wash .k-open, .kitty.a-purr .k-open,
+  .kitty.a-knead .k-open, .kitty.a-yawn .k-open, .kitty.a-scratch .k-open { opacity: 0; }
+  .kitty.a-blink .k-shut, .kitty.a-lick .k-shut, .kitty.a-wash .k-shut, .kitty.a-purr .k-shut,
+  .kitty.a-knead .k-shut, .kitty.a-yawn .k-shut, .kitty.a-scratch .k-shut { opacity: 1; }
 
-  .kitty.lick .k-head { transform: rotate(12deg); }
-  .kitty.lick .k-leg.sn { transform: rotate(-138deg); }
-  .kitty.lick .k-tongue { opacity: 1; animation: k-lick .45s ease-in-out infinite alternate; }
-  .kitty.lick .k-open, .kitty.purr .k-open { opacity: 0; }
-  .kitty.lick .k-shut, .kitty.purr .k-shut { opacity: 1; }
-  .kitty.purr .k-sit { animation: k-purr .09s linear infinite alternate; }
-  .kitty.purr .k-purr { opacity: 1; animation: k-fade .8s ease-in-out infinite alternate; }
+  /* sitting */
+  .kitty.a-gaze .k-shead { transform: rotate(-9deg); }
+  .kitty.a-gaze .k-stail { animation-duration: 5s; }
+  .kitty.a-gaze .k-ears { animation: k-twitch 4s 1.5s infinite; }
+  .kitty.a-lick .k-shead { transform: rotate(12deg); }
+  .kitty.a-lick .k-leg.sn { transform: rotate(-138deg); }
+  .kitty.a-lick .k-tongue { opacity: 1; animation: k-lick .45s ease-in-out infinite alternate; }
+  .kitty.a-wash .k-shead { transform: rotate(16deg); }
+  .kitty.a-wash .k-leg.sn { animation: k-wash .7s ease-in-out infinite alternate; }
+  .kitty.a-scratch .k-shead { transform: rotate(20deg); }
+  .kitty.a-scratch .k-scratch { opacity: 1; animation: k-scratch .16s linear infinite alternate; }
+  .kitty.a-scratch .k-hpaw { opacity: 0; }
+  .kitty.a-yawn .k-shead { transform: rotate(-14deg); }
+  .kitty.a-yawn .k-mouth { animation: k-yawn 2.2s ease-in-out forwards; }
+  .kitty.a-meow .k-mouth { animation: k-meow .9s ease-in-out 2; }
+  .kitty.a-meow .k-say { opacity: 1; animation: k-say 1.8s ease-out forwards; }
+  .kitty.a-swish .k-stail { animation: k-swish .45s ease-in-out infinite alternate; }
+  .kitty.a-knead .k-leg.sf { animation: k-knead .38s ease-in-out infinite alternate; }
+  .kitty.a-knead .k-leg.sn { animation: k-knead .38s ease-in-out infinite alternate-reverse; }
+  .kitty.a-knead .k-purr, .kitty.a-purr .k-purr, .kitty.a-purrlie .k-purr { opacity: 1; animation: k-fade .8s ease-in-out infinite alternate; }
+  .kitty.a-purr .k-shiver, .kitty.a-knead .k-shiver { animation: k-purr .09s linear infinite alternate; }
 
-  .kitty.sleep .k-breathe { animation: k-breathe 2.6s ease-in-out infinite; }
-  .kitty.sleep .k-zzz text { animation: k-float 2.4s ease-out infinite; }
-  .kitty.sleep .k-zzz text + text { animation-delay: 1.2s; }
+  /* standing and moving */
+  .kitty.a-walk .k-leg.nf, .kitty.a-walk .k-leg.fb, .kitty.a-trot .k-leg.nf, .kitty.a-trot .k-leg.fb,
+  .kitty.a-zoomies .k-leg.nf, .kitty.a-zoomies .k-leg.fb { animation: k-step .5s ease-in-out infinite alternate; }
+  .kitty.a-walk .k-leg.ff, .kitty.a-walk .k-leg.nb, .kitty.a-trot .k-leg.ff, .kitty.a-trot .k-leg.nb,
+  .kitty.a-zoomies .k-leg.ff, .kitty.a-zoomies .k-leg.nb { animation: k-step .5s ease-in-out infinite alternate-reverse; }
+  .kitty.a-walk .k-bob { animation: k-bob .25s ease-in-out infinite alternate; }
+  .kitty.a-trot .k-leg { animation-duration: .28s !important; }
+  .kitty.a-trot .k-bob { animation: k-bob .14s ease-in-out infinite alternate; }
+  .kitty.a-zoomies .k-leg { animation-name: k-gallop !important; animation-duration: .16s !important; }
+  .kitty.a-zoomies .k-bob { animation: k-bound .16s ease-in-out infinite alternate; }
+  .kitty.a-zoomies .k-torso { transform: rotate(-4deg); }
+  .kitty.a-zoomies .k-ears { transform: rotate(-18deg); }
+  .kitty.a-zoomies .k-wtail { animation: none; transform: rotate(-35deg); }
+  .kitty.a-sniff .k-whead { transform: rotate(28deg); animation: k-sniff .5s ease-in-out .5s infinite alternate; }
+  .kitty.a-sniff .k-wtail { animation-duration: 1.2s; }
+  .kitty.a-stretch .k-torso { transform: rotate(15deg); }
+  .kitty.a-stretch .k-leg.ff, .kitty.a-stretch .k-leg.nf { transform: rotate(-62deg); }
+  .kitty.a-stretch .k-whead { transform: rotate(-16deg); }
+  .kitty.a-stretch .k-wtail { animation: none; transform: rotate(28deg); }
+  .kitty.a-arch .k-torso { transform: translateY(-3px) rotate(-5deg); }
+  .kitty.a-arch .k-wbody { transform-origin: 30px 48px; transform: scale(1.05, 1.28); transition: transform .3s; }
+  .kitty.a-arch .k-wtail { animation: none; transform: rotate(48deg) scale(1.15); }
+  .kitty.a-arch .k-ears { transform: rotate(-22deg); }
+  .kitty.a-arch .k-jump { animation: k-hop .5s ease-out; }
+  .kitty.a-crouch .k-low { transform: translateY(5px); }
+  .kitty.a-crouch .k-leg { transform: scaleY(.55); }
+  .kitty.a-crouch .k-bob { transform-origin: 44px 54px; animation: k-wiggle .28s ease-in-out .8s infinite alternate; }
+  .kitty.a-crouch .k-wtail { animation: k-swish .3s ease-in-out infinite alternate; }
+  .kitty.a-crouch .k-ears { transform: rotate(-10deg); }
+  .kitty.a-pounce .k-jump { animation: k-pounce .55s ease-out; }
+  .kitty.a-pounce .k-leg.ff, .kitty.a-pounce .k-leg.nf { transform: rotate(-55deg); }
+  .kitty.a-pounce .k-leg.fb, .kitty.a-pounce .k-leg.nb { transform: rotate(45deg); }
+  .kitty.a-hop .k-jump { animation: k-hop .8s ease-out; }
+  .kitty.a-hop .k-leg.ff, .kitty.a-hop .k-leg.nf { transform: rotate(-70deg); }
+  .kitty.a-hop .k-whead { transform: rotate(-22deg); }
 
-  @keyframes k-step  { from { transform: rotate(24deg); } to { transform: rotate(-24deg); } }
-  @keyframes k-bob   { to { transform: translateY(-0.8px); } }
-  @keyframes k-sway  { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
-  @keyframes k-lick  { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
-  @keyframes k-purr  { from { transform: translateX(-0.35px); } to { transform: translateX(0.35px); } }
-  @keyframes k-fade  { from { opacity: .25; } to { opacity: 1; } }
+  /* lying */
+  .kitty.a-loaf .k-lhead { transform: translateY(-3px) rotate(-8deg); }
+  .kitty.a-loaf .k-lhead .k-open { opacity: 1; }
+  .kitty.a-loaf .k-lhead .k-shut { opacity: 0; }
+  .kitty.a-loaf .k-ltail { animation: k-flick 2.4s ease-in-out infinite; }
+  .kitty.a-sleep .k-breathe, .kitty.a-dream .k-breathe, .kitty.a-purrlie .k-breathe { animation: k-breathe 2.6s ease-in-out infinite; }
+  .kitty.a-sleep .k-zzz, .kitty.a-dream .k-zzz { opacity: 1; }
+  .kitty.a-sleep .k-zzz text, .kitty.a-dream .k-zzz text { animation: k-float 2.4s ease-out infinite; }
+  .kitty.a-sleep .k-zzz text + text, .kitty.a-dream .k-zzz text + text { animation-delay: 1.2s; }
+  .kitty.a-dream .k-ears { animation: k-twitch 1.3s infinite; }
+  .kitty.a-dream .k-lpaw { transform-box: fill-box; transform-origin: left center; animation: k-paddle .3s ease-in-out infinite alternate; }
+  .kitty.a-dream .k-ltail { animation: k-flick .9s ease-in-out infinite; }
+  .kitty.a-purrlie .k-lhead { transform: translateY(-1px); }
+
+  @keyframes k-blink  { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+  @keyframes k-step   { from { transform: rotate(24deg); } to { transform: rotate(-24deg); } }
+  @keyframes k-gallop { from { transform: rotate(45deg); } to { transform: rotate(-45deg); } }
+  @keyframes k-bob    { to { transform: translateY(-0.8px); } }
+  @keyframes k-bound  { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-4px) rotate(3deg); } }
+  @keyframes k-sway   { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+  @keyframes k-swish  { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+  @keyframes k-flick  { 0%, 70%, 100% { transform: rotate(0); } 80% { transform: rotate(-12deg); } 90% { transform: rotate(6deg); } }
+  @keyframes k-twitch { 0%, 88%, 100% { transform: rotate(0); } 92% { transform: rotate(-12deg); } 96% { transform: rotate(4deg); } }
+  @keyframes k-lick   { from { transform: scaleY(.4); } to { transform: scaleY(1); } }
+  @keyframes k-wash   { from { transform: rotate(-150deg); } to { transform: rotate(-128deg); } }
+  @keyframes k-scratch { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+  @keyframes k-yawn   { 0% { transform: scale(0); } 35%, 70% { transform: scale(1.1, 1.6); } 100% { transform: scale(0); } }
+  @keyframes k-meow   { 0%, 100% { transform: scale(0); } 40% { transform: scale(1, 1.2); } }
+  @keyframes k-say    { 0% { opacity: 0; transform: translateY(3px); } 25%, 70% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-3px); } }
+  @keyframes k-knead  { from { transform: translateY(0); } to { transform: translateY(-2.5px); } }
+  @keyframes k-purr   { from { transform: translateX(-0.35px); } to { transform: translateX(0.35px); } }
+  @keyframes k-fade   { from { opacity: .25; } to { opacity: 1; } }
+  @keyframes k-sniff  { from { transform: rotate(28deg); } to { transform: rotate(23deg); } }
+  @keyframes k-wiggle { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+  @keyframes k-pounce { 0% { transform: translateY(0); } 45% { transform: translateY(-13px); } 100% { transform: translateY(0); } }
+  @keyframes k-hop    { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-15px); } }
+  @keyframes k-paddle { from { transform: translateX(0); } to { transform: translateX(1.6px); } }
   @keyframes k-breathe { 50% { transform: scale(1.04, 1.09); } }
-  @keyframes k-float { from { transform: translate(0, 4px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(5px, -6px); opacity: 0; } }
+  @keyframes k-float  { from { transform: translate(0, 4px); opacity: 0; } 30% { opacity: 1; } to { transform: translate(5px, -6px); opacity: 0; } }
 
   @media (prefers-color-scheme: dark) { .kitty { --kitty-line: transparent; } }
   @media (prefers-reduced-motion: reduce) {
     .kitty, .kitty * { animation: none !important; transition: none !important; }
+    @view-transition { navigation: none; }
   }
 </style>
 </head>
@@ -588,7 +690,7 @@ const CONFIG = {
     <div class="brand">
       <h1 id="title">Recipes</h1>
       <div class="cat-lane" id="catLane" aria-hidden="true">
-        <svg class="kitty sit" id="kitty" viewBox="0 -2 64 60" focusable="false">
+        <svg class="kitty p-sit a-sit" id="kitty" viewBox="0 -2 64 60" focusable="false">
           <defs>
             <g id="kBall">
               <path d="M-2.7 0 A2.7 2.7 0 0 1 2.7 0 Z" fill="#E5484D"/>
@@ -598,24 +700,33 @@ const CONFIG = {
               <circle r=".95" fill="#FFFFFF" stroke="#21201C" stroke-width=".5"/>
             </g>
           </defs>
-          <g class="k-all">
+          <g class="k-all"><g class="k-jump">
             <!-- Sitting, side on, like his photo -->
-            <g class="k-pose k-sit">
-              <path class="k-tail" d="M18 52 C8 54 3 48 6 41" fill="none" stroke="#E0954A" stroke-width="4.4" stroke-linecap="round"/>
-              <path d="M18 52 C8 54 3 48 6 41" fill="none" stroke="#B9652C" stroke-width="4.4" stroke-dasharray="1.6 3.2"/>
+            <g class="k-pose k-sit"><g class="k-shiver">
+              <g class="k-tail k-stail">
+                <path d="M18 52 C8 54 3 48 6 41" fill="none" stroke="#E0954A" stroke-width="4.4" stroke-linecap="round"/>
+                <path d="M18 52 C8 54 3 48 6 41" fill="none" stroke="#B9652C" stroke-width="4.4" stroke-dasharray="1.6 3.2"/>
+              </g>
               <path d="M16 54 C9 46 12 32 24 28 L36 25 L44 28 C46 38 46 48 45 54 Z" fill="#E0954A"/>
               <path d="M19 35 q4 3 3 9 M16.5 42 q4 3 3 9 M25 31 q3.5 3 3 8 M30 29.5 q3 3 2.5 7" fill="none" stroke="#B9652C" stroke-width="1.5" stroke-linecap="round"/>
               <path class="k-w" d="M37 26.5 C44 29 47 40 45 52 L39 52 C39 43 37 34 33 28.5 Z" fill="#FFFFFF"/>
-              <ellipse class="k-w" cx="22" cy="52.6" rx="5.2" ry="2.4" fill="#FFFFFF"/>
+              <ellipse class="k-w k-hpaw" cx="22" cy="52.6" rx="5.2" ry="2.4" fill="#FFFFFF"/>
+              <g class="k-scratch">
+                <path d="M24 46 C27 34 33 22 37 14" fill="none" stroke="#E0954A" stroke-width="4.2" stroke-linecap="round"/>
+                <ellipse class="k-w" cx="37.5" cy="13" rx="3" ry="2.2" fill="#FFFFFF"/>
+              </g>
               <g class="k-leg sf"><rect x="35.5" y="36" width="5" height="18" rx="2.5" fill="#C97D3A"/><rect class="k-w" x="35.5" y="46" width="5" height="8" rx="2.5" fill="#F2EEE8"/></g>
               <g class="k-leg sn"><rect x="39.5" y="36" width="5" height="18" rx="2.5" fill="#E0954A"/><path d="M39.5 40 h5 M39.5 43.5 h5" stroke="#B9652C" stroke-width="1.2"/><rect class="k-w" x="39.5" y="45" width="5" height="9" rx="2.5" fill="#FFFFFF"/></g>
-              <g class="k-head">
-                <path d="M37.5 13 L38.8 2 L45 8.5 Z M46 8 L52.5 2 L53.5 13.5 Z" fill="#E0954A"/>
-                <path d="M39.3 10.5 L40 5 L43.2 8.4 Z M48 8.3 L51.6 5 L52 10.6 Z" fill="#FF9592"/>
+              <g class="k-head k-shead">
+                <g class="k-ears">
+                  <path d="M37.5 13 L38.8 2 L45 8.5 Z M46 8 L52.5 2 L53.5 13.5 Z" fill="#E0954A"/>
+                  <path d="M39.3 10.5 L40 5 L43.2 8.4 Z M48 8.3 L51.6 5 L52 10.6 Z" fill="#FF9592"/>
+                </g>
                 <circle cx="45" cy="17" r="9.5" fill="#E0954A"/>
                 <path d="M41 9.5 l1 4 M44 8.6 l.4 4 M47 8.8 l-.3 3.6" stroke="#B9652C" stroke-width="1.2" stroke-linecap="round"/>
                 <path class="k-w" d="M45.5 20 C47 15 53 14 56.5 17.5 C58 20 57.5 24 54 25.5 C50 27 46.5 25 45.5 20 Z" fill="#FFFFFF"/>
                 <path d="M55.6 17.4 L57.6 17.6 L56.6 19.1 Z" fill="#FF9592"/>
+                <ellipse class="k-mouth" cx="54.4" cy="22.6" rx="1.7" ry="1.5" fill="#21201C"/>
                 <ellipse class="k-open" cx="50.6" cy="14.6" rx="1.5" ry="1.9" fill="#21201C"/>
                 <path class="k-shut" d="M49 15 Q50.6 16.6 52.2 15" fill="none" stroke="#21201C" stroke-width="1.1" stroke-linecap="round"/>
                 <ellipse class="k-tongue" cx="55.8" cy="23.4" rx="1.4" ry="2.1" fill="#FF9592"/>
@@ -623,55 +734,77 @@ const CONFIG = {
               <path d="M37.5 24 Q43.5 29.5 51 26" fill="none" stroke="#E9C35A" stroke-width="2.4" stroke-linecap="round"/>
               <path d="M46 28 v1.6" stroke="#21201C" stroke-width=".6"/>
               <use href="#kBall" x="46" y="32.2"/>
-            </g>
-
-            <!-- Walking -->
-            <g class="k-pose k-walk"><g class="k-bob">
-              <path class="k-tail" d="M17 38 C9 37 5 28 9 21" fill="none" stroke="#E0954A" stroke-width="4" stroke-linecap="round"/>
-              <path d="M17 38 C9 37 5 28 9 21" fill="none" stroke="#B9652C" stroke-width="4" stroke-dasharray="1.5 3"/>
-              <g class="k-leg fb"><rect x="19" y="42" width="4.4" height="12" rx="2.2" fill="#C97D3A"/><rect x="19" y="49" width="4.4" height="5" rx="2.2" fill="#F2EEE8"/></g>
-              <g class="k-leg ff"><rect x="39" y="42" width="4.4" height="12" rx="2.2" fill="#C97D3A"/><rect x="39" y="49" width="4.4" height="5" rx="2.2" fill="#F2EEE8"/></g>
-              <ellipse cx="30" cy="40" rx="15" ry="8.5" fill="#E0954A"/>
-              <path class="k-w" d="M23 45.5 Q33 50.5 43 44.5 Q42 41 39 41.5 Q33 44 25 43 Z" fill="#FFFFFF"/>
-              <path d="M22 33 q2.2 4 0 8 M27 32 q2.2 4 0 8.5 M32 32 q2.2 4 0 8" fill="none" stroke="#B9652C" stroke-width="1.5" stroke-linecap="round"/>
-              <g class="k-leg nb"><rect x="21.5" y="42" width="4.4" height="12" rx="2.2" fill="#E0954A"/><rect class="k-w" x="21.5" y="48.5" width="4.4" height="5.5" rx="2.2" fill="#FFFFFF"/></g>
-              <g class="k-leg nf"><rect x="41.5" y="42" width="4.4" height="12" rx="2.2" fill="#E0954A"/><rect class="k-w" x="41.5" y="48" width="4.4" height="6" rx="2.2" fill="#FFFFFF"/></g>
-              <path class="k-w" d="M42 34 C45 38 47 42 45 46 L41 45 C42 41 41 38 39.5 35.5 Z" fill="#FFFFFF"/>
-              <path d="M41.5 27 L42.5 18 L48 24 Z M49 23.5 L54.5 18 L55.5 27.5 Z" fill="#E0954A"/>
-              <path d="M43.1 25.3 L43.7 20.6 L46.5 23.7 Z M50.6 23.4 L53.7 20.4 L54.1 25.6 Z" fill="#FF9592"/>
-              <circle cx="48" cy="31" r="8" fill="#E0954A"/>
-              <path d="M44.5 24.5 l.8 3.2 M47.2 23.6 l.3 3.2" stroke="#B9652C" stroke-width="1.1" stroke-linecap="round"/>
-              <path class="k-w" d="M48.5 33.5 C50 29.5 55 29 57.6 32 C58.6 34.5 57.8 37.5 55 38.4 C52 39.3 49.3 37.5 48.5 33.5 Z" fill="#FFFFFF"/>
-              <path d="M57 31.6 L58.8 31.8 L57.9 33.1 Z" fill="#FF9592"/>
-              <ellipse cx="52" cy="29.4" rx="1.3" ry="1.7" fill="#21201C"/>
-              <path d="M41.8 35.8 Q46.5 40.5 52 37.4" fill="none" stroke="#E9C35A" stroke-width="2.2" stroke-linecap="round"/>
-              <use href="#kBall" x="47" y="41.6"/>
+              <g class="k-purr" fill="none" stroke="#E9C35A" stroke-width="1.3" stroke-linecap="round">
+                <path d="M58.5 28 q1.8 2.2 0 4.4"/><path d="M61 26 q2.8 4.2 0 8.4"/>
+              </g>
+              <text class="k-say" x="55" y="4" fill="currentColor" font-size="7" font-weight="700" font-family="SF Pro, system-ui, sans-serif">mew</text>
             </g></g>
 
-            <!-- Asleep, curled up -->
+            <!-- Standing and moving -->
+            <g class="k-pose k-walk"><g class="k-low"><g class="k-bob">
+              <g class="k-tail k-wtail">
+                <path d="M17 38 C9 37 5 28 9 21" fill="none" stroke="#E0954A" stroke-width="4" stroke-linecap="round"/>
+                <path d="M17 38 C9 37 5 28 9 21" fill="none" stroke="#B9652C" stroke-width="4" stroke-dasharray="1.5 3"/>
+              </g>
+              <g class="k-leg fb"><rect x="19" y="42" width="4.4" height="12" rx="2.2" fill="#C97D3A"/><rect x="19" y="49" width="4.4" height="5" rx="2.2" fill="#F2EEE8"/></g>
+              <g class="k-torso">
+                <g class="k-leg ff"><rect x="39" y="42" width="4.4" height="12" rx="2.2" fill="#C97D3A"/><rect x="39" y="49" width="4.4" height="5" rx="2.2" fill="#F2EEE8"/></g>
+                <g class="k-wbody">
+                  <ellipse cx="30" cy="40" rx="15" ry="8.5" fill="#E0954A"/>
+                  <path class="k-w" d="M23 45.5 Q33 50.5 43 44.5 Q42 41 39 41.5 Q33 44 25 43 Z" fill="#FFFFFF"/>
+                  <path d="M22 33 q2.2 4 0 8 M27 32 q2.2 4 0 8.5 M32 32 q2.2 4 0 8" fill="none" stroke="#B9652C" stroke-width="1.5" stroke-linecap="round"/>
+                </g>
+                <g class="k-leg nf"><rect x="41.5" y="42" width="4.4" height="12" rx="2.2" fill="#E0954A"/><rect class="k-w" x="41.5" y="48" width="4.4" height="6" rx="2.2" fill="#FFFFFF"/></g>
+                <path class="k-w" d="M42 34 C45 38 47 42 45 46 L41 45 C42 41 41 38 39.5 35.5 Z" fill="#FFFFFF"/>
+                <g class="k-head k-whead">
+                  <g class="k-ears">
+                    <path d="M41.5 27 L42.5 18 L48 24 Z M49 23.5 L54.5 18 L55.5 27.5 Z" fill="#E0954A"/>
+                    <path d="M43.1 25.3 L43.7 20.6 L46.5 23.7 Z M50.6 23.4 L53.7 20.4 L54.1 25.6 Z" fill="#FF9592"/>
+                  </g>
+                  <circle cx="48" cy="31" r="8" fill="#E0954A"/>
+                  <path d="M44.5 24.5 l.8 3.2 M47.2 23.6 l.3 3.2" stroke="#B9652C" stroke-width="1.1" stroke-linecap="round"/>
+                  <path class="k-w" d="M48.5 33.5 C50 29.5 55 29 57.6 32 C58.6 34.5 57.8 37.5 55 38.4 C52 39.3 49.3 37.5 48.5 33.5 Z" fill="#FFFFFF"/>
+                  <path d="M57 31.6 L58.8 31.8 L57.9 33.1 Z" fill="#FF9592"/>
+                  <ellipse class="k-open" cx="52" cy="29.4" rx="1.3" ry="1.7" fill="#21201C"/>
+                  <path class="k-shut" d="M50.6 29.8 Q52 31.2 53.4 29.8" fill="none" stroke="#21201C" stroke-width="1" stroke-linecap="round"/>
+                </g>
+                <path d="M41.8 35.8 Q46.5 40.5 52 37.4" fill="none" stroke="#E9C35A" stroke-width="2.2" stroke-linecap="round"/>
+                <use href="#kBall" x="47" y="41.6"/>
+              </g>
+              <g class="k-leg nb"><rect x="21.5" y="42" width="4.4" height="12" rx="2.2" fill="#E0954A"/><rect class="k-w" x="21.5" y="48.5" width="4.4" height="5.5" rx="2.2" fill="#FFFFFF"/></g>
+            </g></g></g>
+
+            <!-- Lying: loaf, or curled up asleep -->
             <g class="k-pose k-sleep">
               <g class="k-breathe">
                 <ellipse cx="30" cy="46" rx="16" ry="8.5" fill="#E0954A"/>
                 <path d="M21 39.5 q2.2 4 0 8 M27 38 q2.2 4 0 8.5 M33 38 q2.2 4 0 8" fill="none" stroke="#B9652C" stroke-width="1.5" stroke-linecap="round"/>
               </g>
-              <path d="M15 49 C13 56 38 57.5 49 53" fill="none" stroke="#E0954A" stroke-width="4.2" stroke-linecap="round"/>
-              <path d="M15 49 C13 56 38 57.5 49 53" fill="none" stroke="#B9652C" stroke-width="4.2" stroke-dasharray="1.6 3.2"/>
-              <path d="M39.6 41.5 L39.4 33.5 L45 38.4 Z M46.4 37.8 L52 33.8 L52.2 41.6 Z" fill="#E0954A"/>
-              <path d="M40.9 39.8 L40.8 35.9 L43.6 38.3 Z M47.9 38 L50.7 36 L50.8 39.9 Z" fill="#FF9592"/>
-              <circle cx="46" cy="45" r="7.6" fill="#E0954A"/>
-              <path class="k-w" d="M46.5 48 C48 44.5 53 44 55.2 47 C56 49.6 54.5 52 52 52.4 C49.4 52.8 47.2 51 46.5 48 Z" fill="#FFFFFF"/>
-              <path d="M54.6 46.6 L56.3 46.9 L55.4 48.1 Z" fill="#FF9592"/>
-              <path d="M47.2 43.6 Q48.9 45.2 50.6 43.6" fill="none" stroke="#21201C" stroke-width="1.1" stroke-linecap="round"/>
-              <ellipse class="k-w" cx="50.5" cy="53.4" rx="4.4" ry="1.9" fill="#FFFFFF"/>
+              <g class="k-tail k-ltail">
+                <path d="M15 49 C13 56 38 57.5 49 53" fill="none" stroke="#E0954A" stroke-width="4.2" stroke-linecap="round"/>
+                <path d="M15 49 C13 56 38 57.5 49 53" fill="none" stroke="#B9652C" stroke-width="4.2" stroke-dasharray="1.6 3.2"/>
+              </g>
+              <g class="k-head k-lhead">
+                <g class="k-ears">
+                  <path d="M39.6 41.5 L39.4 33.5 L45 38.4 Z M46.4 37.8 L52 33.8 L52.2 41.6 Z" fill="#E0954A"/>
+                  <path d="M40.9 39.8 L40.8 35.9 L43.6 38.3 Z M47.9 38 L50.7 36 L50.8 39.9 Z" fill="#FF9592"/>
+                </g>
+                <circle cx="46" cy="45" r="7.6" fill="#E0954A"/>
+                <path class="k-w" d="M46.5 48 C48 44.5 53 44 55.2 47 C56 49.6 54.5 52 52 52.4 C49.4 52.8 47.2 51 46.5 48 Z" fill="#FFFFFF"/>
+                <path d="M54.6 46.6 L56.3 46.9 L55.4 48.1 Z" fill="#FF9592"/>
+                <ellipse class="k-open" cx="49" cy="43.6" rx="1.2" ry="1.6" fill="#21201C"/>
+                <path class="k-shut" d="M47.2 43.6 Q48.9 45.2 50.6 43.6" fill="none" stroke="#21201C" stroke-width="1.1" stroke-linecap="round"/>
+              </g>
+              <ellipse class="k-w k-lpaw" cx="50.5" cy="53.4" rx="4.4" ry="1.9" fill="#FFFFFF"/>
               <use href="#kBall" x="42.6" y="52.4"/>
+              <g class="k-purr" fill="none" stroke="#E9C35A" stroke-width="1.3" stroke-linecap="round">
+                <path d="M57.5 44 q1.6 2 0 4"/><path d="M60 42 q2.6 4 0 8"/>
+              </g>
               <g class="k-zzz" fill="currentColor" font-size="9" font-weight="700" font-family="SF Pro, system-ui, sans-serif">
                 <text x="50" y="33">z</text><text x="56" y="28" font-size="7">z</text>
               </g>
             </g>
-          </g>
-          <g class="k-purr" fill="none" stroke="#E9C35A" stroke-width="1.3" stroke-linecap="round">
-            <path d="M58.5 28 q1.8 2.2 0 4.4"/><path d="M61 26 q2.8 4.2 0 8.4"/>
-          </g>
+          </g></g>
         </svg>
       </div>
     </div>
@@ -2251,39 +2384,152 @@ const CONFIG = {
 <script>
 (function () {
   "use strict";
-    /* The cat in the title row: sit, walk right, lick a paw, purr, walk back, nap, repeat. */
+    /* The cat's mind. Each thing it does lasts a random time, and what comes next is a
+       weighted random pick, like a real cat: never the same loop twice. Opening another
+       Home Suite page carries on where the last page left off (same spot, same action). */
     (function catLife() {
       var lane = document.getElementById("catLane"), cat = document.getElementById("kitty");
       if (!lane || !cat) return;
       if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      var x = 0, facing = 1;
-      function state(name) { cat.setAttribute("class", "kitty " + name + (facing < 0 ? " flip" : "")); }
-      function walkTo(target, then) {
-        target = Math.max(0, Math.round(target));
-        if (Math.abs(target - x) < 4) { then(); return; }
-        facing = target > x ? 1 : -1;
-        state("walk");
-        var secs = Math.max(1.5, Math.abs(target - x) / 26);
-        cat.style.transitionDuration = secs + "s";
-        x = target;
+      var MEMORY = "home-suite-cat-v1", SIZE = 60;
+      var ACTS = {
+        sit: ["sit", 2, 5], gaze: ["sit", 4, 9], blink: ["sit", 2.5, 4], lick: ["sit", 3, 6], wash: ["sit", 3, 5],
+        scratch: ["sit", 1.8, 3.2], yawn: ["sit", 2.3, 2.3], meow: ["sit", 1.9, 1.9], swish: ["sit", 2, 4],
+        knead: ["sit", 3, 6], purr: ["sit", 3, 6], lookback: ["sit", 1.5, 3],
+        stand: ["stand", 1.2, 3], sniff: ["stand", 2, 4], stretch: ["stand", 2.4, 3.4], arch: ["stand", 1.4, 1.4],
+        crouch: ["stand", 1.6, 3.2], hop: ["stand", .9, .9], turn: ["stand", .8, 1.6],
+        walk: ["stand", 0, 0, 26], trot: ["stand", 0, 0, 55], zoomies: ["stand", 0, 0, 150], pounce: ["stand", 0, 0, 90],
+        loaf: ["lie", 4, 9], sleep: ["lie", 8, 18], dream: ["lie", 3, 5], purrlie: ["lie", 3, 6]
+      };
+      var NEXT = {
+        sit: { gaze: 3, blink: 2, lick: 3, wash: 2, scratch: 1.5, yawn: 1.5, meow: 1.2, swish: 2, knead: 1, purr: 1.5,
+               lookback: 1.5, sit: 1, walk: 4, trot: 1.2, stand: 2, zoomies: .6, loaf: 2 },
+        stand: { walk: 4, trot: 1.5, sniff: 3, stretch: 2, crouch: 1.8, hop: .8, arch: .5, sit: 4, stand: 1, turn: 1.2,
+                 zoomies: .8, loaf: .8 },
+        lie: { loaf: 2, sleep: 3, dream: 1, purrlie: 1.2, stretch: 1.6, sit: 2.4 }
+      };
+      var AFTER = {
+        crouch: { pounce: 6, stand: 1 }, pounce: { sit: 2, stand: 2, crouch: 1, hop: 1, lick: 1 },
+        zoomies: { sit: 3, loaf: 2, stand: 1, lick: 1 }, yawn: { loaf: 2, sleep: 1, sit: 1, gaze: 1, stretch: 1 },
+        sleep: { dream: 1.5, sleep: 1, loaf: 2, stretch: 2, yawn: 1 }, dream: { sleep: 2, loaf: 1 },
+        stretch: { walk: 3, sit: 2, stand: 1, trot: 1, yawn: 1 }, arch: { zoomies: 2, sit: 1, crouch: 1 }
+      };
+      var START = { sit: 2, gaze: 2, loaf: 2, sleep: 2, lick: 1.5, wash: 1, walk: 2, stand: 1, sniff: 1, purr: 1,
+                    knead: 1, swish: 1, crouch: 1, stretch: 1 };
+      var x = 0, facing = 1, act = "sit", endsAt = 0, goal = null, timer = 0;
+
+      function room() { return Math.max(0, lane.clientWidth - SIZE); }
+      function laneLeft() { return lane.getBoundingClientRect().left; }
+      function rand(a, b) { return a + Math.random() * (b - a); }
+      function pick(weights, not) {
+        var names = Object.keys(weights).filter(function (n) { return n !== not || n === "sleep" || n === "walk"; });
+        if (room() < 40) names = names.filter(function (n) { return !ACTS[n][3]; });
+        if (!names.length) return "sit";
+        var total = names.reduce(function (s, n) { return s + weights[n]; }, 0), r = Math.random() * total;
+        for (var i = 0; i < names.length; i++) { r -= weights[names[i]]; if (r <= 0) return names[i]; }
+        return names[0];
+      }
+      function nowX() {
+        var m = getComputedStyle(cat).transform.match(/matrix\(([^)]+)\)/);
+        return m ? parseFloat(m[1].split(",")[4]) : x;
+      }
+      function show(name) {
+        cat.setAttribute("class", "kitty p-" + ACTS[name][0] + " a-" + name + (facing < 0 ? " flip" : ""));
+      }
+      function place(px, secs, easing) {
+        cat.style.transitionDuration = (secs || 0) + "s";
+        cat.style.transitionTimingFunction = easing || "linear";
+        x = Math.max(0, Math.min(room(), px));
         cat.style.transform = "translateX(" + x + "px)";
-        setTimeout(then, secs * 1000);
       }
-      function rest(name, secs, then) { state(name); setTimeout(then, secs * 1000); }
-      function life() {
-        walkTo(lane.clientWidth - 60, function () {
-          rest("sit", 1.5, function () {
-            rest("lick", 4, function () {
-              rest("purr", 3, function () {
-                walkTo(0, function () {
-                  rest("sleep", 9, function () { rest("sit", 2, life); });
-                });
-              });
-            });
-          });
-        });
+      function remember() {
+        try {
+          localStorage.setItem(MEMORY, JSON.stringify({ act: act, x: laneLeft() + nowX(), facing: facing,
+            left: Math.max(0, endsAt - Date.now()), goal: goal === null ? null : laneLeft() + goal, at: Date.now() }));
+        } catch (e) { /* storage blocked: the cat just starts afresh */ }
       }
-      setTimeout(life, 2000);
+      function later(secs, fn) { clearTimeout(timer); endsAt = Date.now() + secs * 1000; timer = setTimeout(fn, secs * 1000); }
+
+      function moveTo(target, speed, then) {
+        target = Math.max(0, Math.min(room(), target));
+        var dist = Math.abs(target - x);
+        if (dist < 3) { goal = null; then(); return; }
+        if ((target > x ? 1 : -1) !== facing) facing = -facing;
+        show(act);
+        goal = target;
+        var secs = Math.max(.4, dist / speed);
+        place(target, secs, act === "pounce" ? "cubic-bezier(.2,.7,.3,1)" : "linear");
+        later(secs, function () { goal = null; then(); });
+      }
+
+      function run(name, secs) {
+        act = name;
+        var spec = ACTS[name];
+        if (name === "lookback" || name === "turn") facing = -facing;
+        show(name);
+        if (spec[3]) {
+          var r = room(), speed = spec[3];
+          if (name === "zoomies") {
+            var dashes = 2 + Math.floor(Math.random() * 4);
+            (function dash() {
+              if (!dashes--) { decide(); return; }
+              var far = x < r / 2 ? rand(r * .7, r) : rand(0, r * .3);
+              moveTo(far, speed, dash);
+            })();
+          } else if (name === "pounce") {
+            var hop = rand(28, 50) * facing;
+            if (x + hop < 0 || x + hop > r) hop = -hop;
+            moveTo(x + hop, speed, decide);
+          } else {
+            var to = secs === undefined ? rand(0, r) : secs;   // a walk carried over from another page
+            if (secs === undefined && Math.abs(to - x) < 30) to = x < r / 2 ? rand(Math.min(r, x + 30), r) : rand(0, Math.max(0, x - 30));
+            moveTo(to, speed, decide);
+          }
+        } else {
+          later(secs === undefined ? rand(spec[1], spec[2]) : secs, decide);
+        }
+        remember();
+      }
+
+      function decide() {
+        var pose = ACTS[act][0];
+        run(pick(AFTER[act] && Math.random() < .75 ? AFTER[act] : NEXT[pose], act));
+      }
+
+      // Pick up from the last page, or start somewhere random doing something random.
+      var saved = null;
+      try { saved = JSON.parse(localStorage.getItem(MEMORY) || "null"); } catch (e) { saved = null; }
+      cat.style.transition = "none";
+      if (saved && ACTS[saved.act] && Date.now() - saved.at < 20000) {
+        facing = saved.facing === -1 ? -1 : 1;
+        place(saved.x - laneLeft());
+        void cat.getBoundingClientRect();
+        cat.style.transition = "";
+        if (saved.act === "walk" || saved.act === "trot") run(saved.act, saved.goal === null ? undefined : saved.goal - laneLeft());
+        else if (ACTS[saved.act][3]) run(saved.act);
+        else run(saved.act, Math.max(1, (saved.left || 0) / 1000));
+      } else {
+        facing = Math.random() < .5 ? 1 : -1;
+        place(rand(0, room()));
+        void cat.getBoundingClientRect();
+        cat.style.transition = "";
+        run(pick(START));
+      }
+      // The page can still shift a little while it finishes loading; keep the cat on its spot.
+      var placedAt = laneLeft();
+      function settle() {
+        var d = laneLeft() - placedAt;
+        placedAt = laneLeft();
+        if (Math.abs(d) < .5 || goal !== null) return;
+        cat.style.transition = "none";
+        place(x - d);
+        void cat.getBoundingClientRect();
+        cat.style.transition = "";
+      }
+      window.addEventListener("load", settle);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
+      window.addEventListener("pagehide", remember);
+      window.addEventListener("resize", function () { if (x > room()) place(room()); });
     })();
 })();
 </script>

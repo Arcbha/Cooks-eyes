@@ -76,14 +76,12 @@ session.
   from Instagram's public embed page: `reelPicture`; sheet menu "Fill Instagram
   pictures" does the same for older rows); an
   existing dish in that section only has its video link replaced on a second tap.
-- New to-dos send a phone notification through ntfy.sh. The private channel
-  name lives only in the script's Script Properties (`NTFY_TOPIC`, set with the
-  `notifySetup` request); never put it in the repo. Sending needs the script's
-  external-request permission, which the owner grants by running
-  `authorizeNotifications` once in the script editor (done). Google's servers
-  share ntfy's free daily allowance, so sending needs an ntfy access token from
-  the owner's free ntfy.sh account (Script Property `NTFY_TOKEN`, set with
-  `notifySetup` `token`); never put it in the repo.
+- New to-dos send a phone notification through ntfy.sh, sent by the To-dos page
+  itself from the owner's device (ntfy's free allowance is counted per internet
+  address, even with an account token, and Google's servers share one address, so
+  the helper cannot send it). The helper hands the private channel name to set-up
+  devices in its to-dos answer (`notify`, from Script Property `NTFY_TOPIC`);
+  never put the channel name or the ntfy token in the repo.
 - The day's menu lives in the sheet's "Menu" tab (Date, Meal, Dish name, Note),
   read live through the edit link. The plan page (site address + `#plan`) saves
   it through the same helper script, one group per meal in `CONFIG.MEALS`
@@ -118,9 +116,14 @@ session.
 - The cat is the owner's own cat: ginger tabby with a white chest, muzzle and
   paws, pink nose and ears, yellow collar (#E9C35A) and a red-and-white Poke Ball
   bell (Ginger #E0954A, stripes #B9652C). Every page has the same animated cat in
-  the title row (one SVG, `catLife` timer): sits, walks across, licks a paw,
-  purrs, walks back and naps, using only transforms and opacity; it sits still
-  for reduced motion.
+  the title row (one SVG with sit, stand and lie poses; `catLife` script): about 25
+  actions (gaze, blink, lick, wash, scratch, yawn, meow, swish, knead, purr, look
+  back, stand, sniff, stretch, arch, crouch, pounce, hop, turn, walk, trot,
+  zoomies, loaf, sleep, dream, purr lying), each a random length, the next a
+  weighted random pick; first visits start at a random spot and action. The
+  cat's state is kept in browser storage (`home-suite-cat-v1`) so the next page
+  carries on, and a cross-page view transition keeps the cat in place. Only
+  transforms and opacity move; it sits still for reduced motion.
 - Font: SF Pro (owner has Apple's permission), shipped as one small variable
   web font, `fonts/sf-pro.woff2` (Latin only, weights 400-800), the one shared
   file outside the pages. Other scripts such as Hindi fall back to system fonts.
