@@ -74,6 +74,17 @@ session.
 
 ## Everywhere
 
+- Look and feel follow Apple's design approach (the owner's apple-design
+  skill): system font; Apple's grouped grey background with white cards on soft
+  shadows (no outlines); Apple system colours (recipes orange, to-dos and Home
+  blue, meal tints yellow / green / indigo); iOS segmented controls and filled
+  tinted buttons; a frosted, translucent sticky bar; a fixed text-size scale
+  with tighter letter spacing on large headings; instant press feedback; and
+  automatic dark mode plus reduced-motion, reduced-transparency and
+  higher-contrast variants. Colours live as variables at the top of each page's
+  styles, with the Apple-style rules in a block at the end of the styles; keep
+  new pages and changes in the same system.
+
 - After any change, also open `home/` and `todos/` at 390px width and confirm
   they load, their links work, and nothing scrolls sideways.
 - Explain what you changed in plain language, without code terms.

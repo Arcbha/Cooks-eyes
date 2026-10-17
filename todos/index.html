@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#FBF5EA">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Home To-dos">
@@ -31,23 +33,43 @@ const CONFIG = {
 </script>
 
 <style>
+  /* Apple-style design tokens (Reminders blue). Dark follows the phone's setting. */
   :root {
-    --bg: #FBF5EA;
+    color-scheme: light dark;
+    --bg: #F2F2F7;
     --card: #FFFFFF;
-    --ink: #2A1B10;
-    --muted: #7B6857;
-    --line: #E8DCC8;
-    --accent: #2F6B2A;
-    --accent-soft: #EDF6EA;
-    --danger: #B42318;
-    --radius: 20px;
+    --ink: #1C1C1E;
+    --muted: #6E6E73;
+    --line: rgba(60, 60, 67, 0.16);
+    --fill: rgba(118, 118, 128, 0.12);
+    --chrome: rgba(242, 242, 247, 0.78);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+    --accent: #007AFF;
+    --accent-soft: rgba(0, 122, 255, 0.12);
+    --danger: #D70015;
+    --radius: 16px;
 
     /* Same text-size scale as the recipe page */
-    --fs-title: 2rem;
+    --fs-title: 2.125rem;
     --fs-heading: 1.375rem;
-    --fs-body: 1.125rem;
-    --fs-small: 0.9rem;
-    --fs-label: 0.8rem;
+    --fs-body: 1.0625rem;
+    --fs-small: 0.9375rem;
+    --fs-label: 0.8125rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --card: #1C1C1E;
+      --ink: #F5F5F7;
+      --muted: #98989D;
+      --line: rgba(84, 84, 88, 0.65);
+      --fill: rgba(118, 118, 128, 0.24);
+      --chrome: rgba(22, 22, 24, 0.72);
+      --shadow: none;
+      --accent: #0A84FF;
+      --accent-soft: rgba(10, 132, 255, 0.2);
+      --danger: #FF453A;
+    }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -198,6 +220,71 @@ const CONFIG = {
     font-size: var(--fs-body); font-weight: 800; cursor: pointer;
   }
   .gate .msg { margin: 12px 0 0; color: var(--danger); font-weight: 600; }
+
+  /* ============ Apple-style layer ============ */
+  h1 { letter-spacing: -0.022em; }
+  .home-link, .sync { font-weight: 500; }
+  .home-link { color: var(--accent); font-size: var(--fs-body); }
+
+  /* Frosted bar: lists scroll underneath */
+  .bar {
+    background: var(--chrome);
+    -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 0; box-shadow: 0 0.5px 0 var(--line);
+  }
+  .list-tab {
+    min-height: 48px; border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font-weight: 600;
+  }
+  .list-tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
+  .list-tab .n { background: var(--card); color: var(--muted); font-weight: 600; }
+  .list-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, 0.25); color: #FFFFFF; }
+  .list-tab.plus { border: 1.5px dashed var(--line); background: transparent; color: var(--accent); font-weight: 400; }
+  .list-tab.plus[aria-expanded="true"] { background: var(--accent-soft); border-color: transparent; }
+
+  .add input, .newlist input { border: 0; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 0.5px var(--line); }
+  .newlist input { background: var(--fill); box-shadow: none; }
+  .add input:focus, .newlist input:focus { box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 1.5px var(--accent); }
+  .add button, .newlist .create, .gate button { border-radius: 12px; background: var(--accent); font-weight: 600; }
+  .newlist { border: 0; box-shadow: var(--shadow); }
+  .newlist .cancel { border: 0; background: var(--fill); color: var(--ink); font-weight: 600; }
+  .type-chip { border: 0; background: var(--fill); font-weight: 600; }
+  .type-chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+
+  /* One grouped card with hairline dividers, like Reminders */
+  .items { gap: 0; background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .items:empty { display: none; }
+  .item { border: 0; border-radius: 0; min-height: 52px; padding: 2px 4px 2px 6px; position: relative; }
+  .item + .item::before { content: ""; position: absolute; top: 0; left: 52px; right: 0; height: 0.5px; background: var(--line); }
+  .box { width: 24px; height: 24px; border: 1.5px solid #C7C7CC; font-size: 0.85rem; }
+  .item.done .box { background: var(--accent); border-color: var(--accent); }
+  .item.done .text { color: var(--muted); }
+  .del { color: var(--muted); opacity: 0.6; }
+  .del:active { background: rgba(255, 59, 48, 0.12); color: var(--danger); opacity: 1; }
+
+  .empty { border: 0; background: var(--card); box-shadow: var(--shadow); }
+  .done-toggle { font-weight: 600; letter-spacing: 0.04em; }
+  .clear { border: 0; background: var(--fill); color: var(--accent); font-weight: 600; }
+  .share { border: 0; border-radius: 12px; background: rgba(52, 199, 89, 0.14); color: #248A3D; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { .share { color: #30D158; } }
+  .note textarea { border: 0; box-shadow: var(--shadow); }
+  .note textarea:focus { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .gate { border: 0; box-shadow: var(--shadow); }
+  .gate input { border: 0; background: var(--fill); border-radius: 12px; }
+
+  /* Instant feedback on press */
+  .list-tab, .add button, .tick, .clear, .share, .type-chip, .newlist .create, .newlist .cancel { transition: transform 100ms ease-out, background-color 150ms ease; }
+  .list-tab:active, .add button:active, .clear:active, .share:active, .type-chip:active, .newlist .create:active, .newlist .cancel:active { transform: scale(0.97); }
+  .tick:active { background: var(--fill); }
+  @media (prefers-reduced-motion: reduce) {
+    .list-tab, .add button, .tick, .clear, .share, .type-chip, .newlist .create, .newlist .cancel { transition: none; }
+    .list-tab:active, .add button:active, .clear:active, .share:active, .type-chip:active, .newlist .create:active, .newlist .cancel:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .bar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    .items, .empty, .newlist, .note textarea, .gate { box-shadow: none; outline: 1px solid rgba(60, 60, 67, 0.5); }
+  }
 </style>
 </head>
 

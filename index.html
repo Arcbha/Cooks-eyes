@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#FBF5EA">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mohna's Recipes">
@@ -43,24 +45,44 @@ const CONFIG = {
 </script>
 
 <style>
+  /* Apple-style design tokens. Light by default; dark follows the phone's setting. */
   :root {
-    --bg: #FBF5EA;
+    color-scheme: light dark;
+    --bg: #F2F2F7;                      /* grouped background */
     --card: #FFFFFF;
-    --ink: #2A1B10;
-    --muted: #7B6857;
-    --line: #E8DCC8;
-    --accent: #C2410C;
-    --radius: 20px;
+    --ink: #1C1C1E;                     /* label */
+    --muted: #6E6E73;                   /* secondary label */
+    --line: rgba(60, 60, 67, 0.16);     /* hairline separator */
+    --fill: rgba(118, 118, 128, 0.12);  /* controls, chips, fields */
+    --accent: #C93400;                  /* orange, dark enough for white text */
+    --accent-soft: rgba(255, 149, 0, 0.14);
+    --chrome: rgba(242, 242, 247, 0.78);/* frosted bar */
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+    --radius: 18px;
 
     /* One text-size scale for the whole page, largest to smallest:
        page title > date > meal / list heading > dish name > body > small labels */
-    --fs-title: 2rem;
+    --fs-title: 2.125rem;
     --fs-date: 1.75rem;
     --fs-heading: 1.375rem;
     --fs-dish: 1.3rem;
-    --fs-body: 1.125rem;
-    --fs-small: 0.9rem;
-    --fs-label: 0.8rem;
+    --fs-body: 1.0625rem;
+    --fs-small: 0.9375rem;
+    --fs-label: 0.8125rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --card: #1C1C1E;
+      --ink: #F5F5F7;
+      --muted: #98989D;
+      --line: rgba(84, 84, 88, 0.65);
+      --fill: rgba(118, 118, 128, 0.24);
+      --accent: #FF9F0A;
+      --accent-soft: rgba(255, 159, 10, 0.18);
+      --chrome: rgba(22, 22, 24, 0.72);
+      --shadow: none;
+    }
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -338,6 +360,128 @@ const CONFIG = {
   .edit-link a { color: var(--muted); }
   .edit-link[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+  /* ============ Apple-style layer: surfaces, controls, feedback ============ */
+  body { line-height: 1.35; }
+  h1 { font-weight: 800; letter-spacing: -0.022em; }
+
+  /* Frosted bar: content scrolls underneath it */
+  .tabs-bar {
+    background: var(--chrome);
+    -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 0; box-shadow: 0 0.5px 0 var(--line);
+    padding: 10px 0;
+  }
+  .tabs { gap: 8px; }
+  /* Dish lists: an iOS segmented control */
+  .list-row { gap: 2px; padding: 3px; border-radius: 13px; background: var(--fill); }
+  .list-row .tab {
+    flex: 1 1 0; min-height: 46px; border: 0; border-radius: 10px; background: transparent;
+    color: var(--ink); font-size: var(--fs-body); font-weight: 600;
+  }
+  .list-row .tab[aria-selected="true"] {
+    background: var(--card); color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.08);
+  }
+  /* Day's menu: tinted buttons, filled when chosen */
+  .plan-row { gap: 8px; }
+  .plan-row .tab {
+    min-height: 54px; border: 0; border-radius: 14px; background: var(--accent-soft); color: var(--accent);
+    font-size: var(--fs-heading); font-weight: 700; letter-spacing: -0.01em;
+  }
+  .plan-row .tab-tomorrow { font-size: var(--fs-body); }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
+  @media (prefers-color-scheme: dark) { .plan-row .tab[aria-selected="true"] { color: #000000; } }
+
+  /* Cards float on a soft shadow instead of an outline */
+  .card { border: 0; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .thumb { background: var(--fill); }
+  .play {
+    width: 52px; height: 52px; background: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  }
+  .play::before { border-color: transparent transparent transparent #1C1C1E; }
+  .name { font-weight: 700; letter-spacing: -0.01em; padding: 12px 16px 14px; }
+  .voice {
+    min-height: 56px; border-top: 0.5px solid var(--line);
+    background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  }
+  .voice.playing { background: var(--accent); color: #FFFFFF; }
+  @media (prefers-color-scheme: dark) { .voice.playing { color: #000000; } }
+
+  .notice { border: 0; background: var(--accent-soft); }
+  .notice.error { background: rgba(255, 59, 48, 0.14); }
+
+  /* Headings and badges */
+  .list-head h2, .meal-title { letter-spacing: -0.01em; }
+  .count { border: 0; background: var(--fill); color: var(--muted); font-weight: 600; }
+  .eyebrow { font-weight: 700; letter-spacing: 0.06em; }
+  .day-date { letter-spacing: -0.02em; }
+  .plan-note { border: 0; border-left: 4px solid var(--accent); box-shadow: var(--shadow); }
+  .plan-empty { border: 0; background: var(--card); box-shadow: var(--shadow); }
+
+  /* Meals: tinted groups with a coloured icon chip */
+  .meal { border: 0; border-radius: 22px; }
+  .meal { --meal-bg: var(--fill); --meal-chip: var(--fill); --meal-ink: var(--ink); }
+  .meal-breakfast { --meal-bg: rgba(255, 204, 0, 0.13); --meal-chip: rgba(255, 204, 0, 0.35); --meal-ink: #A05A00; }
+  .meal-lunch     { --meal-bg: rgba(52, 199, 89, 0.12); --meal-chip: rgba(52, 199, 89, 0.30); --meal-ink: #248A3D; }
+  .meal-dinner    { --meal-bg: rgba(88, 86, 214, 0.12); --meal-chip: rgba(88, 86, 214, 0.28); --meal-ink: #3634A3; }
+  @media (prefers-color-scheme: dark) {
+    .meal-breakfast { --meal-ink: #FFD60A; }
+    .meal-lunch     { --meal-ink: #30D158; }
+    .meal-dinner    { --meal-ink: #9D9BFF; }
+  }
+  .meal-breakfast, .meal-lunch, .meal-dinner { --meal-line: transparent; }
+  .meal-icon { border-radius: 12px; }
+  .video-preview img { background: var(--fill); }
+  .meal .card { border: 0; box-shadow: var(--shadow); }
+
+  /* Owner tools: filled buttons, fields on a soft fill */
+  .field select, .field input, .field > input, .field textarea, .plan-group .other input {
+    border: 0; border-radius: 12px; background: var(--fill); color: var(--ink);
+  }
+  .field select:focus, .field input:focus, .field textarea:focus, .plan-group .other input:focus {
+    outline: none; box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 1.5px var(--accent);
+  }
+  .big-btn { border: 0; border-radius: 14px; background: var(--fill); color: var(--ink); font-weight: 600; min-height: 56px; }
+  .big-btn.primary { background: var(--accent); color: #FFFFFF; }
+  .big-btn.rec { background: #D70015; color: #FFFFFF; }
+  @media (prefers-color-scheme: dark) { .big-btn.primary { color: #000000; } .big-btn.rec { background: #FF453A; } }
+  .chip { border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font-weight: 600; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: #FFFFFF; }
+  @media (prefers-color-scheme: dark) { .chip[aria-pressed="true"] { color: #000000; } }
+  .chip.new { border: 1.5px dashed var(--line); background: transparent; }
+  .paste-btn { border: 0; border-radius: 12px; background: var(--fill); color: var(--accent); font-weight: 600; }
+  .plan-group { border: 0; border-radius: 16px; box-shadow: var(--shadow); }
+  .plan-group legend { float: left; width: 100%; padding: 4px 4px 6px; font-size: var(--fs-heading); letter-spacing: -0.01em; }
+  .plan-group legend + * { clear: both; }
+  .check { border-bottom: 0.5px solid var(--line); }
+  .video-preview { border: 0; box-shadow: var(--shadow); }
+  .rec-msg { background: var(--fill); }
+  .rec-msg.error { background: rgba(255, 59, 48, 0.14); }
+  .rec-msg.ok { background: rgba(52, 199, 89, 0.16); }
+  .reload { border: 0; border-radius: 12px; background: var(--fill); color: var(--accent); font-weight: 600; }
+  .edit-link a, .back { color: var(--accent); text-decoration: none; font-weight: 500; }
+
+  /* Instant feedback on press */
+  .tab, .chip, .big-btn, .reload, .paste-btn, .voice { transition: transform 100ms ease-out, background-color 150ms ease; }
+  .tile:active { transform: scale(0.98); }
+  .tab:active, .chip:active, .big-btn:active, .reload:active, .paste-btn:active { transform: scale(0.97); }
+  .voice:active { filter: brightness(0.96); }
+
+  /* Respect the phone's accessibility settings */
+  @media (prefers-reduced-motion: reduce) {
+    .tab, .chip, .big-btn, .reload, .paste-btn, .voice, .tile { transition: none; }
+    .tile:active, .tab:active, .chip:active, .big-btn:active, .reload:active, .paste-btn:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .tabs-bar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .play { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  }
+  @media (prefers-contrast: more) {
+    :root { --line: rgba(60, 60, 67, 0.5); --muted: #3A3A3C; }
+    .card, .plan-group, .plan-note, .plan-empty { box-shadow: none; outline: 1px solid var(--line); }
+  }
 </style>
 </head>
 
