@@ -25,9 +25,9 @@ const CONFIG = {
   // type "check" is a checklist, type "note" is a free-text page.
   // More lists can be made on the page with the + button.
   LISTS: [
-    { name: "Things to order", icon: "🛒", type: "check", placeholder: "Add something to order" },
-    { name: "Home chores",     icon: "🧹", type: "check", placeholder: "Add a chore" },
-    { name: "Notes",           icon: "📝", type: "note" }
+    { name: "Things to order", icon: "cart", type: "check", placeholder: "Add something to order" },
+    { name: "Home chores",     icon: "sparkles", type: "check", placeholder: "Add a chore" },
+    { name: "Notes",           icon: "note", type: "note" }
   ]
 };
 </script>
@@ -36,19 +36,39 @@ const CONFIG = {
   /* Apple-style design tokens (Reminders blue). Dark follows the phone's setting. */
   :root {
     color-scheme: light dark;
-    --bg: #F2F2F7;
-    --card: #FFFFFF;
-    --ink: #1C1C1E;
-    --muted: #6E6E73;
-    --line: rgba(60, 60, 67, 0.16);
-    --fill: rgba(118, 118, 128, 0.12);
-    --chrome: rgba(242, 242, 247, 0.78);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-    --accent: #007AFF;
-    --accent-soft: rgba(0, 122, 255, 0.12);
-    --danger: #D70015;
-    --radius: 16px;
 
+    /* Palette (Apple's dark system colours). Every colour on the page comes from here.
+       Ink #000000  Graphite #1C1C1E  Slate #2C2C2E  Snow #F5F5F7  Ash #98989D
+       Saffron #FF9F0A  Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6  Ember #FF453A */
+    --ink-black: #000000;
+    --graphite: #1C1C1E;
+    --slate: #2C2C2E;
+    --snow: #F5F5F7;
+    --ash: #98989D;
+    --saffron: #FF9F0A;
+    --sky: #0A84FF;
+    --sun: #FFD60A;
+    --leaf: #30D158;
+    --indigo: #5E5CE6;
+    --ember: #FF453A;
+
+    /* Roles */
+    --bg: var(--ink-black);
+    --card: var(--graphite);
+    --raised: var(--slate);
+    --ink: var(--snow);
+    --muted: var(--ash);
+    --line: rgba(84, 84, 88, 0.65);
+    --fill: rgba(118, 118, 128, 0.24);
+    --chrome: rgba(22, 22, 24, 0.72);
+    --shadow: none;
+    --line-strong: rgba(235, 235, 245, 0.45);
+    --on-accent: #000000;   /* text on Saffron/Ember fills */
+    --on-sky: #FFFFFF;      /* text on Sky fills, both modes */
+    --accent: var(--sky);
+    --accent-soft: rgba(10, 132, 255, 0.2);
+    --danger: var(--ember);
+    --radius: 16px;
     /* Same text-size scale as the recipe page */
     --fs-title: 2.125rem;
     --fs-heading: 1.375rem;
@@ -56,21 +76,33 @@ const CONFIG = {
     --fs-small: 0.9375rem;
     --fs-label: 0.8125rem;
   }
-  @media (prefers-color-scheme: dark) {
+
+  /* Light mode: the same palette in Apple's light (higher-contrast) values.
+     The page follows the phone: light when it is light, dark when it is dark. */
+  @media (prefers-color-scheme: light) {
     :root {
-      --bg: #000000;
-      --card: #1C1C1E;
-      --ink: #F5F5F7;
-      --muted: #98989D;
-      --line: rgba(84, 84, 88, 0.65);
-      --fill: rgba(118, 118, 128, 0.24);
-      --chrome: rgba(22, 22, 24, 0.72);
-      --shadow: none;
-      --accent: #0A84FF;
-      --accent-soft: rgba(10, 132, 255, 0.2);
-      --danger: #FF453A;
+      --graphite: #FFFFFF;
+      --slate: #FFFFFF;
+      --snow: #1C1C1E;
+      --ash: #6E6E73;
+      --saffron: #C93400;
+      --sky: #007AFF;
+      --sun: #B25000;
+      --leaf: #248A3D;
+      --indigo: #3634A3;
+      --ember: #D70015;
+
+      --bg: #F2F2F7;
+      --line: rgba(60, 60, 67, 0.16);
+      --line-strong: rgba(60, 60, 67, 0.5);
+      --fill: rgba(118, 118, 128, 0.12);
+      --chrome: rgba(242, 242, 247, 0.78);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+      --on-accent: #FFFFFF;
+      --accent-soft: rgba(0, 122, 255, 0.12);
     }
   }
+
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
@@ -103,7 +135,7 @@ const CONFIG = {
     min-width: 26px; padding: 1px 7px; border-radius: 999px; font-size: var(--fs-label);
     background: var(--accent-soft); color: var(--accent);
   }
-  .list-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, 0.18); color: var(--bg); }
+  .list-tab[aria-selected="true"] .n { background: rgba(245, 245, 247, 0.22); color: var(--on-sky); }
 
   .list-tab.plus {
     flex: 0 0 54px; padding: 0; border-style: dashed; color: var(--accent); border-color: var(--accent);
@@ -130,7 +162,7 @@ const CONFIG = {
   .newlist .create, .newlist .cancel {
     flex: 1 1 0; min-height: 52px; border-radius: 14px; font-size: var(--fs-body); font-weight: 800; cursor: pointer;
   }
-  .newlist .create { border: 0; background: var(--accent); color: #FFFFFF; }
+  .newlist .create { border: 0; background: var(--accent); color: var(--on-sky); }
   .newlist .cancel { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); }
   .newlist .msg { margin: 10px 0 0; color: var(--danger); font-size: var(--fs-small); font-weight: 600; }
 
@@ -158,7 +190,7 @@ const CONFIG = {
   .add input:focus { outline: none; border-color: var(--accent); }
   .add button {
     flex: none; min-width: 84px; min-height: 54px; border: 0; border-radius: 14px;
-    background: var(--accent); color: #FFFFFF; font-size: var(--fs-body); font-weight: 800; cursor: pointer;
+    background: var(--accent); color: var(--on-sky); font-size: var(--fs-body); font-weight: 800; cursor: pointer;
   }
 
   /* Items */
@@ -173,17 +205,17 @@ const CONFIG = {
     border: 0; background: none; color: inherit; text-align: left; cursor: pointer; border-radius: 12px;
   }
   .box {
-    flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid #BFAE97;
-    display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 1rem; font-weight: 900;
+    flex: none; width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid var(--ash);
+    display: flex; align-items: center; justify-content: center; color: var(--on-sky); font-size: 1rem; font-weight: 900;
   }
   .text { font-size: var(--fs-body); overflow-wrap: anywhere; }
   .item.done .box { background: var(--accent); border-color: var(--accent); }
   .item.done .text { color: var(--muted); text-decoration: line-through; }
   .del {
     flex: none; width: 44px; height: 44px; border: 0; border-radius: 12px; background: none;
-    color: #B7A58E; font-size: 1.4rem; line-height: 1; cursor: pointer;
+    color: var(--ash); font-size: 1.4rem; line-height: 1; cursor: pointer;
   }
-  .del:active { background: #FDE4DC; color: var(--danger); }
+  .del:active { background: rgba(255, 69, 58, 0.16); color: var(--danger); }
   .tick:focus-visible, .del:focus-visible, .list-tab:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
   .empty {
@@ -203,7 +235,7 @@ const CONFIG = {
   }
   .share {
     display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; margin-top: 16px;
-    border: 2px solid #25D366; border-radius: 14px; background: var(--card); color: #128C4B;
+    border: 2px solid var(--leaf); border-radius: 14px; background: var(--card); color: var(--leaf);
     font-size: var(--fs-body); font-weight: 800; text-decoration: none;
   }
 
@@ -216,12 +248,14 @@ const CONFIG = {
     border: 2px solid var(--line); border-radius: 14px; font: inherit; font-size: var(--fs-body);
   }
   .gate button {
-    width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--accent); color: #FFFFFF;
+    width: 100%; min-height: 56px; border: 0; border-radius: 14px; background: var(--accent); color: var(--on-sky);
     font-size: var(--fs-body); font-weight: 800; cursor: pointer;
   }
   .gate .msg { margin: 12px 0 0; color: var(--danger); font-weight: 600; }
 
   /* ============ Apple-style layer ============ */
+  .list-tab .ico, .list-tab svg, .del svg, .box svg { display: block; flex: none; }
+  .type-chip svg { vertical-align: -5px; margin-right: 4px; }
   h1 { letter-spacing: -0.022em; }
   .home-link, .sync { font-weight: 500; }
   .home-link { color: var(--accent); font-size: var(--fs-body); }
@@ -235,9 +269,9 @@ const CONFIG = {
   .list-tab {
     min-height: 48px; border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font-weight: 600;
   }
-  .list-tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
+  .list-tab[aria-selected="true"] { background: var(--accent); color: var(--on-sky); }
   .list-tab .n { background: var(--card); color: var(--muted); font-weight: 600; }
-  .list-tab[aria-selected="true"] .n { background: rgba(255, 255, 255, 0.25); color: #FFFFFF; }
+  .list-tab[aria-selected="true"] .n { background: rgba(245, 245, 247, 0.25); color: var(--on-sky); }
   .list-tab.plus { border: 1.5px dashed var(--line); background: transparent; color: var(--accent); font-weight: 400; }
   .list-tab.plus[aria-expanded="true"] { background: var(--accent-soft); border-color: transparent; }
 
@@ -255,17 +289,16 @@ const CONFIG = {
   .items:empty { display: none; }
   .item { border: 0; border-radius: 0; min-height: 52px; padding: 2px 4px 2px 6px; position: relative; }
   .item + .item::before { content: ""; position: absolute; top: 0; left: 52px; right: 0; height: 0.5px; background: var(--line); }
-  .box { width: 24px; height: 24px; border: 1.5px solid #C7C7CC; font-size: 0.85rem; }
+  .box { width: 24px; height: 24px; border: 1.5px solid var(--ash); font-size: 0.85rem; }
   .item.done .box { background: var(--accent); border-color: var(--accent); }
   .item.done .text { color: var(--muted); }
   .del { color: var(--muted); opacity: 0.6; }
-  .del:active { background: rgba(255, 59, 48, 0.12); color: var(--danger); opacity: 1; }
+  .del:active { background: rgba(255, 69, 58, 0.16); color: var(--danger); opacity: 1; }
 
   .empty { border: 0; background: var(--card); box-shadow: var(--shadow); }
   .done-toggle { font-weight: 600; letter-spacing: 0.04em; }
   .clear { border: 0; background: var(--fill); color: var(--accent); font-weight: 600; }
-  .share { border: 0; border-radius: 12px; background: rgba(52, 199, 89, 0.14); color: #248A3D; font-weight: 600; }
-  @media (prefers-color-scheme: dark) { .share { color: #30D158; } }
+  .share { border: 0; border-radius: 12px; background: rgba(48, 209, 88, 0.16); color: var(--leaf); font-weight: 600; }
   .note textarea { border: 0; box-shadow: var(--shadow); }
   .note textarea:focus { box-shadow: 0 0 0 3px var(--accent-soft); }
   .gate { border: 0; box-shadow: var(--shadow); }
@@ -283,7 +316,12 @@ const CONFIG = {
     .bar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
   @media (prefers-contrast: more) {
-    .items, .empty, .newlist, .note textarea, .gate { box-shadow: none; outline: 1px solid rgba(60, 60, 67, 0.5); }
+    .items, .empty, .newlist, .note textarea, .gate { box-shadow: none; outline: 1px solid var(--line-strong); }
+  }
+
+  /* Small labels in sentence case, not tracked-out capitals */
+  .eyebrow, .summary .label, .done-toggle {
+    text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: 600;
   }
 </style>
 </head>
@@ -306,8 +344,8 @@ const CONFIG = {
       <label for="newListName">New list name</label>
       <input id="newListName" type="text" maxlength="40" placeholder="For example: Pharmacy, Guests, Ideas">
       <div class="types" role="group" aria-label="Kind of list">
-        <button class="type-chip" type="button" data-type="check" aria-pressed="true">☑ Checklist<small>Tick items off</small></button>
-        <button class="type-chip" type="button" data-type="note" aria-pressed="false">📝 Note<small>Free writing</small></button>
+        <button class="type-chip" type="button" data-type="check" aria-pressed="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6.5h10M10 12h10M10 17.5h10M4 6.5l1.2 1.2L7.5 5.4M4 12l1.2 1.2L7.5 10.9M4 17.5l1.2 1.2 2.3-2.3"/></svg> Checklist<small>Tick items off</small></button>
+        <button class="type-chip" type="button" data-type="note" aria-pressed="false"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19M9 12h7M9 16h5"/></svg> Note<small>Free writing</small></button>
       </div>
       <div class="row">
         <button class="create" type="submit">Create</button>
@@ -353,6 +391,33 @@ const CONFIG = {
 <script>
 (function () {
   "use strict";
+
+  /* Line icons in the SF Symbols style: one stroke weight, drawn in the text colour.
+     Only these fixed shapes are ever inserted as markup. */
+  var ICONS = {
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
+    bowl: '<path d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0z"/><path d="M8.5 8c0-1.2 1-1.6 1-2.8M12 8c0-1.2 1-1.6 1-2.8M15.5 8c0-1.2 1-1.6 1-2.8"/>',
+    moon: '<path d="M20 14.6A8.5 8.5 0 0 1 9.4 4a8.5 8.5 0 1 0 10.6 10.6z"/>',
+    fork: '<path d="M7 3v7.5M4.5 3v4.5a2.5 2.5 0 0 0 5 0V3M7 10.5V21M17.5 21V3c-2 1-3.5 3.6-3.5 6.5 0 2.2 1.2 3.5 3.5 3.5"/>',
+    speaker: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/>',
+    loading: '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5"/>',
+    stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+    cart: '<path d="M3 4h2.2l2.3 10.5h10.3L20.5 7.5H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+    sparkles: '<path d="M11 3.5l1.6 4.4 4.4 1.6-4.4 1.6L11 15.5l-1.6-4.4L5 9.5l4.4-1.6zM18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+    note: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19M9 12h7M9 16h5"/>',
+    list: '<path d="M10 6.5h10M10 12h10M10 17.5h10M4 6.5l1.2 1.2L7.5 5.4M4 12l1.2 1.2L7.5 10.9M4 17.5l1.2 1.2 2.3-2.3"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    xmark: '<path d="M7 7l10 10M17 7L7 17"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    chevron: '<path d="M9.5 6l6 6-6 6"/>'
+  };
+  function iconSvg(name, size) {
+    var px = size || 22;
+    return '<svg viewBox="0 0 24 24" width="' + px + '" height="' + px + '" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      (ICONS[name] || "") + '</svg>';
+  }
 
   var PASS_KEY = "recipe-page-passcode-v1";   // shared with the recipe tools and Home
   var CACHE_KEY = "home-todos-cache-v1";        // the items (Home reads this too)
@@ -430,7 +495,9 @@ const CONFIG = {
     return {
       name: name,
       type: type === "note" ? "note" : "check",
-      icon: (built && built.icon) || (made && made.icon) || (type === "note" ? "📝" : "📋"),
+      // Lists made earlier may carry an emoji; anything that is not a known icon falls back by type.
+      icon: [built && built.icon, made && made.icon].filter(function (n) { return n && ICONS[n]; })[0] ||
+            (type === "note" ? "note" : "list"),
       placeholder: (built && built.placeholder) || "Add to " + name
     };
   }
@@ -512,7 +579,8 @@ const CONFIG = {
       b.setAttribute("aria-selected", name === currentList ? "true" : "false");
       var icon = document.createElement("span");
       icon.setAttribute("aria-hidden", "true");
-      icon.textContent = info.icon;
+      icon.innerHTML = iconSvg(info.icon, 22);
+      icon.className = "ico";
       var label = document.createElement("span");
       label.textContent = name;
       b.appendChild(icon); b.appendChild(label);
@@ -538,7 +606,7 @@ const CONFIG = {
     plus.className = "list-tab plus";
     plus.setAttribute("aria-label", "Make a new list");
     plus.setAttribute("aria-expanded", el.newList.hidden ? "false" : "true");
-    plus.textContent = "+";
+    plus.innerHTML = iconSvg("plus", 24);
     plus.addEventListener("click", function () {
       if (el.newList.hidden) openNewList(); else closeNewList();
     });
@@ -615,7 +683,7 @@ const CONFIG = {
     var box = document.createElement("span");
     box.className = "box";
     box.setAttribute("aria-hidden", "true");
-    box.textContent = it.done ? "✓" : "";
+    box.innerHTML = it.done ? iconSvg("check", 16) : "";
     var text = document.createElement("span");
     text.className = "text";
     text.textContent = it.task;
@@ -631,7 +699,7 @@ const CONFIG = {
     del.type = "button";
     del.className = "del";
     del.setAttribute("aria-label", "Delete " + it.task);
-    del.textContent = "×";
+    del.innerHTML = iconSvg("xmark", 20);
     del.addEventListener("click", function () {
       items = items.filter(function (x) { return x !== it; });
       saveCache();
@@ -711,7 +779,7 @@ const CONFIG = {
     var clash = listNames().filter(function (n) { return n.toLowerCase() === name.toLowerCase(); })[0];
     if (!name) { el.newListMsg.textContent = "Type a name for the list."; el.newListMsg.hidden = false; return; }
     if (clash) { el.newListMsg.textContent = "There is already a list called " + clash + "."; el.newListMsg.hidden = false; return; }
-    var icon = newListType === "note" ? "📝" : "📋";
+    var icon = newListType === "note" ? "note" : "list";
     serverLists.push({ name: name, type: newListType, icon: icon, text: "", updated: 0 });
     flushNote();
     currentList = name;

@@ -48,18 +48,38 @@ const CONFIG = {
   /* Apple-style design tokens. Light by default; dark follows the phone's setting. */
   :root {
     color-scheme: light dark;
-    --bg: #F2F2F7;                      /* grouped background */
-    --card: #FFFFFF;
-    --ink: #1C1C1E;                     /* label */
-    --muted: #6E6E73;                   /* secondary label */
-    --line: rgba(60, 60, 67, 0.16);     /* hairline separator */
-    --fill: rgba(118, 118, 128, 0.12);  /* controls, chips, fields */
-    --accent: #C93400;                  /* orange, dark enough for white text */
-    --accent-soft: rgba(255, 149, 0, 0.14);
-    --chrome: rgba(242, 242, 247, 0.78);/* frosted bar */
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
-    --radius: 18px;
 
+    /* Palette (Apple's dark system colours). Every colour on the page comes from here.
+       Ink #000000  Graphite #1C1C1E  Slate #2C2C2E  Snow #F5F5F7  Ash #98989D
+       Saffron #FF9F0A  Sky #0A84FF  Sun #FFD60A  Leaf #30D158  Indigo #5E5CE6  Ember #FF453A */
+    --ink-black: #000000;
+    --graphite: #1C1C1E;
+    --slate: #2C2C2E;
+    --snow: #F5F5F7;
+    --ash: #98989D;
+    --saffron: #FF9F0A;
+    --sky: #0A84FF;
+    --sun: #FFD60A;
+    --leaf: #30D158;
+    --indigo: #5E5CE6;
+    --ember: #FF453A;
+
+    /* Roles */
+    --bg: var(--ink-black);
+    --card: var(--graphite);
+    --raised: var(--slate);
+    --ink: var(--snow);
+    --muted: var(--ash);
+    --line: rgba(84, 84, 88, 0.65);
+    --fill: rgba(118, 118, 128, 0.24);
+    --chrome: rgba(22, 22, 24, 0.72);
+    --shadow: none;
+    --line-strong: rgba(235, 235, 245, 0.45);
+    --on-accent: #000000;   /* text on Saffron/Ember fills */
+    --accent: var(--saffron);
+    --accent-soft: rgba(255, 159, 10, 0.18);
+
+    --radius: 18px;
     /* One text-size scale for the whole page, largest to smallest:
        page title > date > meal / list heading > dish name > body > small labels */
     --fs-title: 2.125rem;
@@ -70,20 +90,33 @@ const CONFIG = {
     --fs-small: 0.9375rem;
     --fs-label: 0.8125rem;
   }
-  @media (prefers-color-scheme: dark) {
+
+  /* Light mode: the same palette in Apple's light (higher-contrast) values.
+     The page follows the phone: light when it is light, dark when it is dark. */
+  @media (prefers-color-scheme: light) {
     :root {
-      --bg: #000000;
-      --card: #1C1C1E;
-      --ink: #F5F5F7;
-      --muted: #98989D;
-      --line: rgba(84, 84, 88, 0.65);
-      --fill: rgba(118, 118, 128, 0.24);
-      --accent: #FF9F0A;
-      --accent-soft: rgba(255, 159, 10, 0.18);
-      --chrome: rgba(22, 22, 24, 0.72);
-      --shadow: none;
+      --graphite: #FFFFFF;
+      --slate: #FFFFFF;
+      --snow: #1C1C1E;
+      --ash: #6E6E73;
+      --saffron: #C93400;
+      --sky: #007AFF;
+      --sun: #B25000;
+      --leaf: #248A3D;
+      --indigo: #3634A3;
+      --ember: #D70015;
+
+      --bg: #F2F2F7;
+      --line: rgba(60, 60, 67, 0.16);
+      --line-strong: rgba(60, 60, 67, 0.5);
+      --fill: rgba(118, 118, 128, 0.12);
+      --chrome: rgba(242, 242, 247, 0.78);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 20px rgba(0, 0, 0, 0.06);
+      --on-accent: #FFFFFF;
+      --accent-soft: rgba(201, 52, 0, 0.10);
     }
   }
+
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
@@ -123,14 +156,14 @@ const CONFIG = {
     font: inherit; font-size: var(--fs-body); font-weight: 700;
     cursor: pointer;
   }
-  .tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  .tab[aria-selected="true"] { background: var(--raised); color: var(--ink); }
   /* Top row: the day's menu, in the accent colour so it stands apart from the dish lists */
   .plan-row .tab {
     min-height: 58px; font-size: var(--fs-heading); border-color: var(--accent); color: var(--accent);
   }
   .plan-row .tab-today { flex: 2 1 0; }
   .plan-row .tab-tomorrow { flex: 1 1 0; font-size: var(--fs-body); }
-  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
   .tab:focus-visible, .tile:focus-visible, .reload:focus-visible {
     outline: 3px solid var(--accent); outline-offset: 3px;
   }
@@ -138,9 +171,9 @@ const CONFIG = {
   .notice {
     margin: 14px 0 0; padding: 12px 14px;
     border-radius: 14px; border: 1px solid var(--line);
-    background: #FFF3D6; font-size: 1rem;
+    background: var(--accent-soft); font-size: 1rem;
   }
-  .notice.error { background: #FDE4DC; border-color: #F3B9A6; }
+  .notice.error { background: rgba(255, 69, 58, 0.16); border-color: transparent; }
   .notice[hidden] { display: none; }
 
   /* Dish tiles */
@@ -156,7 +189,7 @@ const CONFIG = {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(42, 27, 16, 0.07);
+    box-shadow: var(--shadow);
   }
   .tile {
     display: block; text-decoration: none; color: inherit;
@@ -165,18 +198,18 @@ const CONFIG = {
   .tile:active { transform: scale(0.985); }
   .thumb {
     position: relative; aspect-ratio: 16 / 9;
-    background: #EADFCB; overflow: hidden;
+    background: var(--fill); overflow: hidden;
   }
   .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .placeholder {
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
-    color: #FFFFFF; font-size: 5.5rem; font-weight: 800;
+    color: var(--ink); font-size: 5.5rem; font-weight: 800;
   }
   .play {
     position: absolute; right: 12px; bottom: 12px;
     width: 54px; height: 54px; border-radius: 50%;
-    background: rgba(255, 255, 255, 0.94);
+    background: rgba(245, 245, 247, 0.94);
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
@@ -201,15 +234,15 @@ const CONFIG = {
     position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
     width: 100%; min-height: 62px; padding: 10px 16px;
     border: 0; border-top: 1px solid var(--line);
-    background: #FFF3D6; color: var(--ink);
+    background: var(--accent-soft); color: var(--ink);
     font: inherit; font-size: var(--fs-body); font-weight: 700;
     text-decoration: none; cursor: pointer;
   }
   .voice .icon { font-size: 1.5rem; line-height: 1; }
-  .voice.playing { background: var(--accent); color: #FFFFFF; }
+  .voice.playing { background: var(--accent); color: var(--on-accent); }
   .voice .progress {
     position: absolute; left: 0; bottom: 0; height: 5px; width: 0;
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.35);
   }
   .voice:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
@@ -231,16 +264,16 @@ const CONFIG = {
     border: 2px solid var(--ink); border-radius: 16px; background: var(--card); color: var(--ink);
     font: inherit; font-size: 1.25rem; font-weight: 700; cursor: pointer;
   }
-  .big-btn.primary { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
-  .big-btn.rec { background: #B91C1C; border-color: #B91C1C; color: #FFFFFF; }
+  .big-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .big-btn.rec { background: var(--ember); border-color: var(--ember); color: var(--on-accent); }
   .big-btn[disabled] { opacity: 0.5; cursor: default; }
   .big-btn[hidden], .recorder audio[hidden], .file-pick[hidden] { display: none; }
   .recorder audio { width: 100%; margin: 0 0 12px; }
   .file-pick { display: block; margin: 4px 0 16px; color: var(--muted); }
   .file-pick input { display: block; margin-top: 6px; max-width: 100%; font: inherit; }
-  .rec-msg { margin: 6px 0 0; padding: 12px 14px; border-radius: 14px; background: #FFF3D6; }
-  .rec-msg.error { background: #FDE4DC; }
-  .rec-msg.ok { background: #DCF2E3; }
+  .rec-msg { margin: 6px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--fill); }
+  .rec-msg.error { background: rgba(255, 69, 58, 0.16); }
+  .rec-msg.ok { background: rgba(48, 209, 88, 0.16); }
   .rec-msg[hidden] { display: none; }
   /* Plan page */
   .chips { display: flex; gap: 10px; margin: 0 0 12px; }
@@ -248,7 +281,7 @@ const CONFIG = {
     flex: 1 1 0; min-height: 54px; border: 2px solid var(--ink); border-radius: 14px;
     background: var(--card); color: var(--ink); font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer;
   }
-  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
   .plan-day { margin: -6px 0 16px; font-size: 1.15rem; font-weight: 700; color: var(--accent); }
   .plan-group { margin: 0 0 16px; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); }
   .plan-group legend { padding: 0 6px; font-size: 1.2rem; font-weight: 800; }
@@ -273,13 +306,13 @@ const CONFIG = {
     background: var(--card); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 700; cursor: pointer;
   }
   .hint { display: block; margin-top: 6px; font-size: var(--fs-small); font-weight: 500; color: var(--muted); }
-  .hint.error { color: #B42318; }
+  .hint.error { color: var(--ember); }
   .video-preview {
     display: flex; gap: 12px; align-items: center; margin: -4px 0 16px; padding: 10px;
     border: 1px solid var(--line); border-radius: 16px; background: var(--card);
   }
   .video-preview[hidden] { display: none; }
-  .video-preview img { flex: none; width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #EADFCB; }
+  .video-preview img { flex: none; width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: var(--fill); }
   .video-preview .vp-title { font-size: var(--fs-small); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
   .video-preview .vp-by { margin-top: 2px; font-size: var(--fs-label); color: var(--muted); }
   .chips-wrap { flex-wrap: wrap; }
@@ -299,7 +332,7 @@ const CONFIG = {
   .list-head h2 { margin: 0; font-size: var(--fs-heading); font-weight: 800; }
   .count {
     flex: none; padding: 4px 10px; border-radius: 999px;
-    background: rgba(255, 255, 255, 0.75); border: 1px solid var(--line);
+    background: var(--fill); border: 1px solid var(--line);
     font-size: var(--fs-label); font-weight: 700; color: var(--muted);
   }
 
@@ -323,13 +356,10 @@ const CONFIG = {
   .plan-empty strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: var(--fs-heading); }
 
   .meal {
-    --meal-bg: #F5EFE6; --meal-line: var(--line); --meal-chip: #EADFCB; --meal-ink: var(--ink);
+    --meal-bg: var(--fill); --meal-line: transparent; --meal-chip: var(--fill); --meal-ink: var(--ink);
     grid-column: 1 / -1; padding: 12px 12px 14px; border-radius: 24px;
     background: var(--meal-bg); border: 1px solid var(--meal-line);
   }
-  .meal-breakfast { --meal-bg: #FFF5DC; --meal-line: #F2DDA4; --meal-chip: #FFE59A; --meal-ink: #7A4300; }
-  .meal-lunch     { --meal-bg: #EDF6EA; --meal-line: #CCE3C6; --meal-chip: #CFEAC6; --meal-ink: #2C6327; }
-  .meal-dinner    { --meal-bg: #EEEDF9; --meal-line: #D5D2EF; --meal-chip: #DAD6F6; --meal-ink: #3B3586; }
   .meal-head { display: flex; align-items: center; gap: 12px; padding: 2px 4px 12px; }
   .meal-icon {
     flex: none; width: 44px; height: 44px; border-radius: 50%;
@@ -341,7 +371,7 @@ const CONFIG = {
   .meal-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 14px; }
   @media (min-width: 640px)  { .meal-grid { grid-template-columns: 1fr 1fr; } }
   @media (min-width: 1000px) { .meal-grid { grid-template-columns: 1fr 1fr 1fr; } }
-  .meal .card { box-shadow: 0 1px 4px rgba(42, 27, 16, 0.06); border-color: rgba(42, 27, 16, 0.08); }
+  .meal .card { box-shadow: var(--shadow); border-color: transparent; }
   .tile.plain .name { padding-bottom: 14px; }
 
   .empty { padding: 40px 0; text-align: center; color: var(--muted); font-size: 1.15rem; }
@@ -379,7 +409,7 @@ const CONFIG = {
     color: var(--ink); font-size: var(--fs-body); font-weight: 600;
   }
   .list-row .tab[aria-selected="true"] {
-    background: var(--card); color: var(--ink);
+    background: var(--raised); color: var(--ink);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.08);
   }
   /* Day's menu: tinted buttons, filled when chosen */
@@ -389,25 +419,23 @@ const CONFIG = {
     font-size: var(--fs-heading); font-weight: 700; letter-spacing: -0.01em;
   }
   .plan-row .tab-tomorrow { font-size: var(--fs-body); }
-  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: #FFFFFF; }
-  @media (prefers-color-scheme: dark) { .plan-row .tab[aria-selected="true"] { color: #000000; } }
+  .plan-row .tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
 
   /* Cards float on a soft shadow instead of an outline */
   .card { border: 0; border-radius: var(--radius); box-shadow: var(--shadow); }
   .thumb { background: var(--fill); }
   .play {
-    width: 52px; height: 52px; background: rgba(255, 255, 255, 0.82);
+    width: 52px; height: 52px; background: rgba(245, 245, 247, 0.85);
     -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
   }
-  .play::before { border-color: transparent transparent transparent #1C1C1E; }
+  .play::before { border-color: transparent transparent transparent #1C1C1E; } /* dark triangle on the light glass circle, both modes */
   .name { font-weight: 700; letter-spacing: -0.01em; padding: 12px 16px 14px; }
   .voice {
     min-height: 56px; border-top: 0.5px solid var(--line);
     background: var(--accent-soft); color: var(--accent); font-weight: 600;
   }
-  .voice.playing { background: var(--accent); color: #FFFFFF; }
-  @media (prefers-color-scheme: dark) { .voice.playing { color: #000000; } }
+  .voice.playing { background: var(--accent); color: var(--on-accent); }
 
   .notice { border: 0; background: var(--accent-soft); }
   .notice.error { background: rgba(255, 59, 48, 0.14); }
@@ -423,16 +451,13 @@ const CONFIG = {
   /* Meals: tinted groups with a coloured icon chip */
   .meal { border: 0; border-radius: 22px; }
   .meal { --meal-bg: var(--fill); --meal-chip: var(--fill); --meal-ink: var(--ink); }
-  .meal-breakfast { --meal-bg: rgba(255, 204, 0, 0.13); --meal-chip: rgba(255, 204, 0, 0.35); --meal-ink: #A05A00; }
-  .meal-lunch     { --meal-bg: rgba(52, 199, 89, 0.12); --meal-chip: rgba(52, 199, 89, 0.30); --meal-ink: #248A3D; }
-  .meal-dinner    { --meal-bg: rgba(88, 86, 214, 0.12); --meal-chip: rgba(88, 86, 214, 0.28); --meal-ink: #3634A3; }
-  @media (prefers-color-scheme: dark) {
-    .meal-breakfast { --meal-ink: #FFD60A; }
-    .meal-lunch     { --meal-ink: #30D158; }
-    .meal-dinner    { --meal-ink: #9D9BFF; }
-  }
-  .meal-breakfast, .meal-lunch, .meal-dinner { --meal-line: transparent; }
-  .meal-icon { border-radius: 12px; }
+  /* Meal tints: Sun, Leaf and Indigo from the palette */
+  .meal-breakfast { --meal-bg: rgba(255, 214, 10, 0.10); --meal-chip: rgba(255, 214, 10, 0.22); --meal-ink: var(--sun); }
+  .meal-lunch     { --meal-bg: rgba(48, 209, 88, 0.10);  --meal-chip: rgba(48, 209, 88, 0.22);  --meal-ink: var(--leaf); }
+  .meal-dinner    { --meal-bg: rgba(94, 92, 230, 0.14);  --meal-chip: rgba(94, 92, 230, 0.30);  --meal-ink: var(--indigo); }
+  .meal-icon { border-radius: 12px; color: var(--meal-ink); }
+  .voice .icon { display: inline-flex; }
+  .voice .icon svg { display: block; }
   .video-preview img { background: var(--fill); }
   .meal .card { border: 0; box-shadow: var(--shadow); }
 
@@ -444,12 +469,10 @@ const CONFIG = {
     outline: none; box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 1.5px var(--accent);
   }
   .big-btn { border: 0; border-radius: 14px; background: var(--fill); color: var(--ink); font-weight: 600; min-height: 56px; }
-  .big-btn.primary { background: var(--accent); color: #FFFFFF; }
-  .big-btn.rec { background: #D70015; color: #FFFFFF; }
-  @media (prefers-color-scheme: dark) { .big-btn.primary { color: #000000; } .big-btn.rec { background: #FF453A; } }
+  .big-btn.primary { background: var(--accent); color: var(--on-accent); }
+  .big-btn.rec { background: var(--ember); color: var(--on-accent); }
   .chip { border: 0; border-radius: 12px; background: var(--fill); color: var(--ink); font-weight: 600; }
-  .chip[aria-pressed="true"] { background: var(--accent); color: #FFFFFF; }
-  @media (prefers-color-scheme: dark) { .chip[aria-pressed="true"] { color: #000000; } }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
   .chip.new { border: 1.5px dashed var(--line); background: transparent; }
   .paste-btn { border: 0; border-radius: 12px; background: var(--fill); color: var(--accent); font-weight: 600; }
   .plan-group { border: 0; border-radius: 16px; box-shadow: var(--shadow); }
@@ -476,11 +499,16 @@ const CONFIG = {
   }
   @media (prefers-reduced-transparency: reduce) {
     .tabs-bar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
-    .play { background: #FFFFFF; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .play { background: var(--snow); -webkit-backdrop-filter: none; backdrop-filter: none; }
   }
   @media (prefers-contrast: more) {
-    :root { --line: rgba(60, 60, 67, 0.5); --muted: #3A3A3C; }
+    :root { --line: var(--line-strong); }
     .card, .plan-group, .plan-note, .plan-empty { box-shadow: none; outline: 1px solid var(--line); }
+  }
+
+  /* Small labels in sentence case, not tracked-out capitals */
+  .eyebrow, .summary .label, .done-toggle {
+    text-transform: none; letter-spacing: 0; font-size: var(--fs-small); font-weight: 600;
   }
 </style>
 </head>
@@ -491,7 +519,7 @@ const CONFIG = {
     <div class="brand">
       <h1 id="title">Recipes</h1>
       <svg class="cat" viewBox="2 2 54 59" aria-hidden="true" focusable="false">
-        <g fill="#E8822F">
+        <g fill="#FF9F0A">
           <path d="M14 60 C8 50 12 34 24 30 L34 26 L44 28 C46 40 47 52 46 60 Z"/>
           <circle cx="41" cy="20" r="10"/>
           <ellipse cx="48.5" cy="23" rx="4.5" ry="3.6"/>
@@ -499,10 +527,10 @@ const CONFIG = {
           <path d="M42 11 L49.5 4 L50.5 17 Z"/>
           <path d="M16 59 C4 59 2 48 6 40 C8 36 11 37 9.5 41 C7 47 8 55 17 55 Z"/>
         </g>
-        <path d="M33 27.5 Q40 32 48 27" fill="none" stroke="#F2C230" stroke-width="2.6" stroke-linecap="round"/>
-        <circle cx="41" cy="33" r="3" fill="#D93A2B"/>
-        <path d="M38 33 A3 3 0 0 0 44 33 Z" fill="#fff"/>
-        <path d="M38 33 H44" stroke="#2A1B10" stroke-width="0.8"/>
+        <path d="M33 27.5 Q40 32 48 27" fill="none" stroke="#FFD60A" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="41" cy="33" r="3" fill="#FF453A"/>
+        <path d="M38 33 A3 3 0 0 0 44 33 Z" fill="#F5F5F7"/>
+        <path d="M38 33 H44" stroke="#000000" stroke-width="0.8"/>
       </svg>
     </div>
     <p class="subtitle" id="subtitle"></p>
@@ -564,7 +592,7 @@ const CONFIG = {
     <button class="big-btn primary" id="addSave" type="button">Add dish</button>
     <p class="rec-msg" id="addMsg" hidden></p>
     <div class="add-next" id="addNext" hidden>
-      <a class="big-btn" id="addRecord" href="#record">&#127908; Record voice instructions</a>
+      <a class="big-btn" id="addRecord" href="#record"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg> Record voice instructions</a>
       <button class="big-btn" id="addAnother" type="button">Add another dish</button>
     </div>
     <a class="back" href="#">&larr; Back to recipes</a>
@@ -606,6 +634,33 @@ const CONFIG = {
 (function () {
   "use strict";
 
+  /* Line icons in the SF Symbols style: one stroke weight, drawn in the text colour.
+     Only these fixed shapes are ever inserted as markup. */
+  var ICONS = {
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/>',
+    bowl: '<path d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0z"/><path d="M8.5 8c0-1.2 1-1.6 1-2.8M12 8c0-1.2 1-1.6 1-2.8M15.5 8c0-1.2 1-1.6 1-2.8"/>',
+    moon: '<path d="M20 14.6A8.5 8.5 0 0 1 9.4 4a8.5 8.5 0 1 0 10.6 10.6z"/>',
+    fork: '<path d="M7 3v7.5M4.5 3v4.5a2.5 2.5 0 0 0 5 0V3M7 10.5V21M17.5 21V3c-2 1-3.5 3.6-3.5 6.5 0 2.2 1.2 3.5 3.5 3.5"/>',
+    speaker: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/>',
+    loading: '<path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5"/>',
+    stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor" stroke="none"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+    cart: '<path d="M3 4h2.2l2.3 10.5h10.3L20.5 7.5H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+    sparkles: '<path d="M11 3.5l1.6 4.4 4.4 1.6-4.4 1.6L11 15.5l-1.6-4.4L5 9.5l4.4-1.6zM18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
+    note: '<path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14.5 3v4.5H19M9 12h7M9 16h5"/>',
+    list: '<path d="M10 6.5h10M10 12h10M10 17.5h10M4 6.5l1.2 1.2L7.5 5.4M4 12l1.2 1.2L7.5 10.9M4 17.5l1.2 1.2 2.3-2.3"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    xmark: '<path d="M7 7l10 10M17 7L7 17"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    chevron: '<path d="M9.5 6l6 6-6 6"/>'
+  };
+  function iconSvg(name, size) {
+    var px = size || 22;
+    return '<svg viewBox="0 0 24 24" width="' + px + '" height="' + px + '" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      (ICONS[name] || "") + '</svg>';
+  }
+
   /* Shown only until a sheet link is pasted into CONFIG above. */
   var SAMPLE_CSV = [
     "Section,Dish name,YouTube link,Image link,Show",
@@ -621,7 +676,8 @@ const CONFIG = {
 
   var CACHE_KEY = "recipe-page-cache-v1";
   var TAB_KEY = "recipe-page-tab-v1";
-  var PLACEHOLDER_COLORS = ["#C2410C", "#B45309", "#15803D", "#0F766E", "#9D174D", "#6D28D9", "#1D4ED8"];
+  // Letter tiles use the palette: Saffron, Sky, Leaf, Indigo, Sun, Ember
+  var PLACEHOLDER_COLORS = ["--saffron", "--sky", "--leaf", "--indigo", "--sun", "--ember"];
 
   var el = {
     title: document.getElementById("title"),
@@ -811,7 +867,9 @@ const CONFIG = {
     box.className = "placeholder";
     var sum = 0;
     for (var i = 0; i < name.length; i++) sum += name.charCodeAt(i);
-    box.style.background = PLACEHOLDER_COLORS[sum % PLACEHOLDER_COLORS.length];
+    var colour = "var(" + PLACEHOLDER_COLORS[sum % PLACEHOLDER_COLORS.length] + ")";
+    box.style.background = "color-mix(in srgb, " + colour + " 16%, transparent)";
+    box.style.color = colour;
     // First visible letter, kept whole for Hindi and other Indian scripts.
     var first = Array.from(name)[0];
     try {
@@ -892,10 +950,10 @@ const CONFIG = {
       });
   }
 
-  function voiceLabel(btn, icon, text) {
+  function voiceLabel(btn, iconName, text) {
     btn.textContent = "";
     var i = document.createElement("span");
-    i.className = "icon"; i.setAttribute("aria-hidden", "true"); i.textContent = icon;
+    i.className = "icon"; i.setAttribute("aria-hidden", "true"); i.innerHTML = iconSvg(iconName, 24);
     var t = document.createElement("span");
     t.textContent = text;
     var bar = document.createElement("span");
@@ -905,7 +963,7 @@ const CONFIG = {
 
   function voiceIdle(btn) {
     btn.classList.remove("playing");
-    voiceLabel(btn, "\uD83D\uDD0A", CONFIG.VOICE_BUTTON_TEXT || "Listen to instructions");
+    voiceLabel(btn, "speaker", CONFIG.VOICE_BUTTON_TEXT || "Listen to instructions");
   }
 
   function stopVoice() {
@@ -922,7 +980,7 @@ const CONFIG = {
     link.href = btn.dataset.page;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
-    voiceLabel(link, "\uD83D\uDD0A", "Open voice note");
+    voiceLabel(link, "speaker", "Open voice note");
     btn.replaceWith(link);
     if (activeVoice === btn) activeVoice = null;
   }
@@ -932,14 +990,14 @@ const CONFIG = {
     stopVoice();
     activeVoice = btn;
     btn.classList.add("playing");
-    voiceLabel(btn, "\u23F3", "Loading...");
+    voiceLabel(btn, "loading", "Loading...");
     player.src = SILENCE;
     player.play().catch(function () { /* replaced by the real sound below */ });
     voiceSource(btn).then(function (src) {
       if (activeVoice !== btn) return null;
       player.src = src;
       return player.play().then(function () {
-        if (activeVoice === btn) voiceLabel(btn, "\u23F9", "Stop");
+        if (activeVoice === btn) voiceLabel(btn, "stop", "Stop");
       });
     }).catch(function (err) {
       if (err && err.name === "AbortError") return; // another note was tapped
@@ -997,7 +1055,7 @@ const CONFIG = {
   }
 
   // Pictures for meals, so they can be told apart without reading.
-  var MEAL_ICONS = { breakfast: "\u2600\uFE0F", lunch: "\uD83C\uDF5B", dinner: "\uD83C\uDF19" };
+  var MEAL_ICONS = { breakfast: "sun", lunch: "bowl", dinner: "moon" };
 
   function mealClass(meal) {
     var m = meal.toLowerCase();
@@ -1054,7 +1112,7 @@ const CONFIG = {
       var icon = document.createElement("span");
       icon.className = "meal-icon";
       icon.setAttribute("aria-hidden", "true");
-      icon.textContent = MEAL_ICONS[kind] || "\uD83C\uDF7D\uFE0F";
+      icon.innerHTML = iconSvg(MEAL_ICONS[kind] || "fork", 24);
       var title = document.createElement("h3");
       title.className = "meal-title";
       title.textContent = g.meal;

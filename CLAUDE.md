@@ -74,17 +74,27 @@ session.
 
 ## Everywhere
 
-- Look and feel follow Apple's design approach (the owner's apple-design
-  skill): system font; Apple's grouped grey background with white cards on soft
-  shadows (no outlines); Apple system colours (recipes orange, to-dos and Home
-  blue, meal tints yellow / green / indigo); iOS segmented controls and filled
-  tinted buttons; a frosted, translucent sticky bar; a fixed text-size scale
-  with tighter letter spacing on large headings; instant press feedback; and
-  automatic dark mode plus reduced-motion, reduced-transparency and
-  higher-contrast variants. Colours live as variables at the top of each page's
-  styles, with the Apple-style rules in a block at the end of the styles; keep
-  new pages and changes in the same system.
-
+- Design guides live in `.claude/skills/` (apple-design, frontend-design,
+  ui-ux-pro-max, ui-styling); read them before any visual change. These pages
+  have no build step, so take the principles from ui-styling and ui-ux-pro-max,
+  not their Tailwind/shadcn setup or search scripts.
+- Look and feel: Apple-style, SaaS-quality. Grouped background with cards on
+  soft shadows (no outlines), iOS segmented controls and filled tinted buttons,
+  a frosted sticky bar, a fixed type scale with tighter tracking on large
+  headings, sentence-case small labels (no tracked-out capitals), instant press
+  feedback, and reduced-motion, reduced-transparency and higher-contrast
+  variants. Icons are the inline line-icon set (`ICONS` / `iconSvg` in each
+  page), never emoji.
+- Colour: one named palette, Apple's system colours, defined at the top of each
+  page's styles; never introduce a colour outside it. Light and dark values,
+  following the phone's light/dark setting:
+  Ink (background) #F2F2F7 / #000000, Graphite (cards) #FFFFFF / #1C1C1E,
+  Slate (raised) #FFFFFF / #2C2C2E, Snow (text) #1C1C1E / #F5F5F7,
+  Ash (secondary text) #6E6E73 / #98989D, Saffron #C93400 / #FF9F0A (recipes),
+  Sky #007AFF / #0A84FF (to-dos, Home, links), Sun #B25000 / #FFD60A
+  (breakfast), Leaf #248A3D / #30D158 (lunch, WhatsApp), Indigo #3634A3 /
+  #5E5CE6 (dinner), Ember #D70015 / #FF453A (delete, errors). Each app takes
+  one accent; meals keep their colour everywhere.
 - After any change, also open `home/` and `todos/` at 390px width and confirm
   they load, their links work, and nothing scrolls sideways.
 - Explain what you changed in plain language, without code terms.
