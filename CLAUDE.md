@@ -18,6 +18,25 @@ This repo is the owner's **Home Suite**, published on GitHub Pages:
   spreadsheet the script creates. The passcode is remembered per phone under the
   same browser storage key on every page.
 
+## Updating the helper script (no copy-paste needed)
+
+The live script can be updated from a Claude session with Google's `clasp` tool
+(`npx @google/clasp@3`). The owner has turned on the Apps Script API.
+
+- Script ID: `1K7XY80-C55UQflxq4oBOplpjFAq2yUYtpbwHHyFHCULuU0lyq0GAd43u`
+- Live deployment (the web app address in every page's config):
+  `AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5`
+
+Steps: `clasp login --no-localhost` (the owner opens the link, approves, and
+pastes back the `http://localhost:8888/?...` address), `clasp clone <script id>`
+into a scratch folder, compare the live `Code.js` with `voice-notes-helper.gs`,
+copy the new file in with the real passcode put in place of `change-me` (ask the
+owner; never commit it), keep the downloaded `appsscript.json` as it is,
+`clasp push --force`, then `clasp update-deployment <deployment id> -d "<what
+changed>"` so the address stays the same. Test the live address afterwards and
+remove any test data. Keep the sign-in out of the repo; it lasts only for the
+session.
+
 ## Mohna's Recipes
 
 - The recipe page is for a household cook. It is one file, `index.html`,
