@@ -27,8 +27,14 @@ The live script can be updated from a Claude session with Google's `clasp` tool
 - Live deployment (the web app address in every page's config):
   `AKfycbzKgqTVNnPieihSyylKKASbCG3afc_VKvxpC01BBxL57A8YLPGeYSRl2l5z2PExViO5`
 
-Steps: `clasp login --no-localhost` (the owner opens the link, approves, and
-pastes back the `http://localhost:8888/?...` address), `clasp clone <script id>`
+Sign-in: if the environment variable `CLASPRC_JSON` is set (the owner stored the
+saved clasp sign-in in the Claude environment's settings), write it to
+`~/.clasprc.json` and skip logging in; the passcode is in `HOME_SUITE_PASSCODE`
+when set. Never print either value or put them in the repo. Only if they are
+missing or rejected: `clasp login --no-localhost` (the owner opens the link,
+approves, and pastes back the `http://localhost:8888/?...` address).
+
+Steps: `clasp clone <script id>`
 into a scratch folder, compare the live `Code.js` with `voice-notes-helper.gs`,
 copy the new file in with the real passcode put in place of `change-me` (ask the
 owner; never commit it), keep the downloaded `appsscript.json` as it is,
