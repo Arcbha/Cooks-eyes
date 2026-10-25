@@ -125,6 +125,10 @@ function doPost(e) {
       lock.waitLock(20000);
       return addDish(req);
     }
+    if (req.action === "removeDish" || req.action === "restoreDish") {
+      lock.waitLock(20000);
+      return req.action === "removeDish" ? removeDish(req) : restoreDish(req);
+    }
     if (req.action === "reelPicture") {
       var pic = reelPicture(req.link);
       return reply(pic ? { ok: true, mimeType: pic.mimeType, data: pic.data }
@@ -249,6 +253,44 @@ function savePhoto(sheet, header, cols, rowNumber, dish, photo) {
   }
   sheet.getRange(rowNumber, col + 1).setValue(file.getUrl());
   return file.getUrl();
+}
+
+// { key, action: "removeDish", section, dish } takes that dish's row out of the dish
+// list. Its voice note and photo stay in Drive. The answer carries the removed rows,
+// so the page can put them back ("Undo") with { action: "restoreDish", rows }.
+function removeDish(req) {
+  var section = String(req.section || "").trim(), dish = String(req.dish || "").trim();
+  if (!section || !dish) return reply({ ok: false, error: "Pick a dish to remove." });
+  var sheet = dishSheet();
+  if (!sheet) return reply({ ok: false, error: 'No tab with a "Dish name" column was found.' });
+  var data = sheet.getDataRange().getValues();
+  var cols = listColumns(data[0]);
+  var removed = [];
+  for (var r = data.length - 1; r >= 1; r--) {   // bottom up, so row numbers stay right
+    if (clean(data[r][cols.name]) === clean(dish) && clean(data[r][cols.section]) === clean(section)) {
+      sheet.deleteRow(r + 1);
+      removed.unshift({ row: r + 1, values: data[r].map(function (v) { return isDate(v) ? v.toISOString() : v; }) });
+    }
+  }
+  if (!removed.length) return reply({ ok: false, error: dish + " is not in " + section + " any more." });
+  SpreadsheetApp.flush();
+  return reply({ ok: true, dish: dish, section: section, rows: removed });
+}
+
+function restoreDish(req) {
+  var sheet = dishSheet();
+  if (!sheet) return reply({ ok: false, error: 'No tab with a "Dish name" column was found.' });
+  var width = sheet.getLastColumn();
+  var rows = (req.rows || []).slice(0, 10);
+  rows.forEach(function (item) {
+    var values = (item.values || []).slice(0, width).map(function (v) { return String(v === null || v === undefined ? "" : v).slice(0, 2000); });
+    while (values.length < width) values.push("");
+    var at = Math.max(2, Math.min(Number(item.row) || sheet.getLastRow() + 1, sheet.getLastRow() + 1));
+    if (at <= sheet.getLastRow()) sheet.insertRowBefore(at);
+    sheet.getRange(at, 1, 1, width).setValues([values]);
+  });
+  SpreadsheetApp.flush();
+  return reply({ ok: true, restored: rows.length });
 }
 
 // Columns of the dish list, found by their headings like the recipe page does.

@@ -76,6 +76,14 @@ session.
   from Instagram's public embed page: `reelPicture`; sheet menu "Fill Instagram
   pictures" does the same for older rows); an
   existing dish in that section only has its video link replaced on a second tap.
+  Under the form, "Remove a dish" lists every dish with a bin: first tap asks
+  (Remove / Keep), then the helper's `removeDish` deletes the row and returns it
+  so "Undo" can put it back in place (`restoreDish`). Voice notes and photos stay
+  in Drive. Home's recipe tile links here as "Add / remove".
+- Every page reads the helper's answers with `readJson`: anything that is not
+  JSON (an office network or security program answering instead of Google, or a
+  rare Google hiccup) becomes a plain explanation instead of a raw error, and
+  reads (`getJson`) are retried twice; changes are sent once.
 - New to-dos send phone alerts as **Home Suite** itself (standard web push; no
   ntfy). Each phone turns them on from the "To-do alerts" card on Home (iPhone:
   add Home Suite to the home screen first). `manifest.webmanifest`, `sw.js` and

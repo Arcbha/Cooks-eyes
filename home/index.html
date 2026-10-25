@@ -43,7 +43,7 @@ const CONFIG = {
       blurb: "The cook's recipe page",
       actions: [
         { label: "Plan menu", href: "../#plan" },
-        { label: "Add dish", href: "../#add" },
+        { label: "Add / remove", href: "../#add" },
         { label: "Voice note", href: "../#record" }
       ]
     }
@@ -740,10 +740,31 @@ const CONFIG = {
     }).catch(function () { /* storage blocked: alerts show a general message */ });
   }
 
+  /* Answers from the helper script. It always answers JSON; anything else came from
+     something in between: a network or security program that blocks Google's script
+     service (common on office laptops and VPNs), or a rare hiccup at Google itself. */
+  var BLOCKED_MSG = "Google's helper could not be reached from this device. Office laptops and VPNs often block it: try home Wi-Fi without the VPN, or use your phone.";
+  function readJson(res) {
+    return res.text().then(function (text) {
+      try { return JSON.parse(text); } catch (e) {
+        var err = new Error(BLOCKED_MSG);
+        err.blocked = true;
+        throw err;
+      }
+    });
+  }
+  // Reading is safe to try again; the first try after a quiet spell sometimes fails at Google.
+  function getJson(url, options, tries) {
+    tries = tries || 3;
+    return fetch(url, options).then(readJson).catch(function (err) {
+      if (tries <= 1) throw err;
+      return new Promise(function (done) { setTimeout(done, 900); }).then(function () { return getJson(url, options, tries - 1); });
+    });
+  }
+
   if (store(DEVICE_KEY)) {
     if (window.__justSetUp) deviceNote("This device is set up. Home To-dos and the recipe tools will work here.", true);
-    fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ key: store(DEVICE_KEY), action: "todos" }) })
-      .then(function (res) { return res.json(); })
+    getJson(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify({ key: store(DEVICE_KEY), action: "todos" }) })
       .then(function (out) {
         if (out && out.ok) { showTodos(out.items); setUpAlerts(out.push && out.push.key); }
         else if (out && out.needsSetup) {
@@ -788,7 +809,7 @@ const CONFIG = {
 
   function helperPost(body) {
     body.key = store(DEVICE_KEY) || "";
-    return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) }).then(function (res) { return res.json(); });
+    return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) }).then(readJson);
   }
 
   function keyBytes(b64) {
@@ -868,8 +889,7 @@ const CONFIG = {
 
   // Recipes: today's menu from the recipe sheet's Menu tab (read through the helper).
   if (CONFIG.HELPER_URL) {
-    fetch(CONFIG.HELPER_URL + "?recipes=1&t=" + Date.now(), { cache: "no-store", credentials: "omit" })
-      .then(function (res) { return res.ok ? res.json() : {}; })
+    getJson(CONFIG.HELPER_URL + "?recipes=1&t=" + Date.now(), { cache: "no-store", credentials: "omit" })
       .then(function (out) { return out && out.ok ? out.menu : ""; })
       .then(function (text) {
         var rows = parseCSV(text);

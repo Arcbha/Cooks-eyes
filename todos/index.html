@@ -129,6 +129,9 @@ const CONFIG = {
   .topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
   .home-link { color: var(--muted); font-size: var(--fs-small); font-weight: 600; text-decoration: none; }
   .sync { font-size: var(--fs-label); font-weight: 700; color: var(--muted); }
+  .blocked-note { margin: 12px 0 0; padding: 12px 14px; border-radius: 14px; background: rgba(229, 72, 77, 0.14);
+                  color: var(--ink); font-size: var(--fs-small); line-height: 1.4; }
+  .blocked-note[hidden] { display: none; }
   .sync.error { color: var(--danger); }
   h1 { margin: 6px 0 0; font-size: var(--fs-title); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
 
@@ -673,6 +676,7 @@ const CONFIG = {
   </section>
 
   <main id="main" hidden>
+    <p class="blocked-note" id="blockedNote" role="alert" hidden></p>
     <section class="note" id="noteBox" hidden>
       <textarea id="noteText" placeholder="Write anything here. It saves by itself."></textarea>
       <p class="note-info" id="noteInfo"></p>
@@ -783,9 +787,14 @@ const CONFIG = {
     return null;
   }
 
-  function setSync(text, isError) {
+  // "blocked": the helper's answer was swapped for another page on the way (see readJson);
+  // the full explanation goes in a box above the list, the top line stays short.
+  function setSync(text, isError, blocked) {
     el.sync.textContent = text || "";
     el.sync.classList.toggle("error", !!isError);
+    var note = document.getElementById("blockedNote");
+    note.textContent = blocked || "";
+    note.hidden = !blocked;
   }
 
   function listNames() {
@@ -813,10 +822,32 @@ const CONFIG = {
 
   /* ---------- talking to the helper ---------- */
 
+  /* Answers from the helper script. It always answers JSON; anything else came from
+     something in between: a network or security program that blocks Google's script
+     service (common on office laptops and VPNs), or a rare hiccup at Google itself. */
+  var BLOCKED_MSG = "Google's helper could not be reached from this device. Office laptops and VPNs often block it: try home Wi-Fi without the VPN, or use your phone.";
+  function readJson(res) {
+    return res.text().then(function (text) {
+      try { return JSON.parse(text); } catch (e) {
+        var err = new Error(BLOCKED_MSG);
+        err.blocked = true;
+        throw err;
+      }
+    });
+  }
+  // Reading is safe to try again; the first try after a quiet spell sometimes fails at Google.
+  function getJson(url, options, tries) {
+    tries = tries || 3;
+    return fetch(url, options).then(readJson).catch(function (err) {
+      if (tries <= 1) throw err;
+      return new Promise(function (done) { setTimeout(done, 900); }).then(function () { return getJson(url, options, tries - 1); });
+    });
+  }
+
   function call(body) {
     body.key = store(DEVICE_KEY) || "";
-    return fetch(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) })
-      .then(function (res) { return res.json(); })
+    // Reading the lists is retried; a change is sent once.
+    return getJson(CONFIG.HELPER_URL, { method: "POST", body: JSON.stringify(body) }, body.action === "todos" ? 3 : 1)
       .then(function (out) {
         if (!out || !out.ok) {
           var err = new Error((out && out.error) || "Could not save.");
@@ -838,7 +869,8 @@ const CONFIG = {
     }, function (err) {
       inFlight--;
       if (err.wrongPass) { lock(err.message); return; }
-      setSync("Not saved. Check the internet.", true);
+      if (err.blocked) setSync("Maybe not saved", true, err.message);
+      else setSync("Not saved. Check the internet.", true);
       if (!inFlight) refresh();
     });
   }
@@ -851,7 +883,8 @@ const CONFIG = {
       return true;
     }).catch(function (err) {
       if (err.wrongPass) { lock(err.message); return false; }
-      setSync(items.length ? "Offline. Showing the last saved list." : "Could not load. Check the internet.", true);
+      if (err.blocked) setSync("Can't reach Google", true, err.message);
+      else setSync(items.length ? "Offline. Showing the last saved list." : "Could not load. Check the internet.", true);
       return false;
     });
   }

@@ -336,6 +336,26 @@ const CONFIG = {
 
   .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 1rem; }
 
+  /* Add page: remove a dish */
+  .manage { margin-top: 34px; padding-top: 22px; border-top: 0.5px solid var(--line); }
+  .manage h2 { margin: 0 0 6px; }
+  .m-section { margin: 18px 0 6px; color: var(--muted); font-size: var(--fs-small); font-weight: 600; }
+  .m-list { margin: 0; padding: 0; list-style: none; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+  .m-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 60px; padding: 8px 10px 8px 12px; }
+  .m-row + .m-row { border-top: 0.5px solid var(--line); }
+  .m-thumb { flex: none; width: 56px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--fill); }
+  .m-name { flex: 1 1 90px; min-width: 0; font-size: var(--fs-body); font-weight: 600; overflow-wrap: anywhere; }
+  .m-del, .m-yes, .m-no { flex: none; min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; }
+  .m-del { display: inline-flex; align-items: center; justify-content: center; background: transparent; color: var(--ember); }
+  .m-del:active { background: rgba(229, 72, 77, 0.14); }
+  .m-del[hidden] { display: none; }
+  .m-yes { padding: 0 14px; background: var(--ember-fill); color: #FFFFFF; }
+  .m-no { padding: 0 14px; background: var(--fill); color: var(--ink); }
+  .m-row.asking .m-name { color: var(--ember); }
+  .m-ask { display: flex; gap: 8px; margin-left: auto; }
+  .m-undo { margin-left: 10px; padding: 6px 12px; border: 0; border-radius: 10px; background: var(--card); color: var(--ink);
+            font: inherit; font-weight: 700; cursor: pointer; }
+
   /* Heading above a dish list (Breakfast, Lunch/Dinner) */
   .list-head {
     grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between;
@@ -895,6 +915,12 @@ const CONFIG = {
       <a class="big-btn" id="addRecord" href="#record"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg> Record voice instructions</a>
       <button class="big-btn" id="addAnother" type="button">Add another dish</button>
     </div>
+    <div class="manage" id="manage">
+      <h2>Remove a dish</h2>
+      <p class="help">Tap the bin next to a dish the cook no longer needs. Its voice note and photo stay in your Drive.</p>
+      <p class="rec-msg" id="manageMsg" hidden></p>
+      <div id="manageList"></div>
+    </div>
     <a class="back" href="#">&larr; Back to recipes</a>
   </section>
 
@@ -945,6 +971,7 @@ const CONFIG = {
     list: '<path d="M10 6.5h10M10 12h10M10 17.5h10M4 6.5l1.2 1.2L7.5 5.4M4 12l1.2 1.2L7.5 10.9M4 17.5l1.2 1.2 2.3-2.3"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
     xmark: '<path d="M7 7l10 10M17 7L7 17"/>',
+    trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     chevron: '<path d="M9.5 6l6 6-6 6"/>'
   };
@@ -1169,8 +1196,7 @@ const CONFIG = {
     if (!photoCache[id]) {
       var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
       photoCache[id] = !helper ? Promise.reject(new Error("no helper")) :
-        fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "photo=" + encodeURIComponent(id), { credentials: "omit" })
-          .then(function (res) { return res.json(); })
+        getJson(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "photo=" + encodeURIComponent(id), { credentials: "omit" })
           .then(function (out) {
             if (!out || !out.ok || !out.data) throw new Error("not a recipe photo");
             return "data:" + (out.mimeType || "image/jpeg") + ";base64," + out.data;
@@ -1249,8 +1275,7 @@ const CONFIG = {
     var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
     if (!id || !helper) return Promise.resolve(btn.dataset.src);
     if (voiceCache[id]) return Promise.resolve(voiceCache[id]);
-    return fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "voice=" + encodeURIComponent(id), { credentials: "omit" })
-      .then(function (res) { return res.json(); })
+    return getJson(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "voice=" + encodeURIComponent(id), { credentials: "omit" })
       .then(function (out) {
         if (!out || !out.ok || !out.data) throw new Error((out && out.error) || "No sound returned.");
         var raw = atob(out.data);
@@ -1605,6 +1630,7 @@ const CONFIG = {
     var wanted = tabTapped ? currentKey : (todayPlanned ? "__today" : remembered);
     var firstList = keys.filter(function (k) { return k.indexOf("__") !== 0; })[0] || keys[0];
     selectTab(keys.indexOf(wanted) >= 0 ? wanted : firstList, false);
+    if (ad && !ad.page.hidden) fillManage();
   }
 
   function setStatus(text) { el.status.textContent = text; }
@@ -1617,11 +1643,32 @@ const CONFIG = {
 
   /* The dish list and the day's menu come from the helper web app, which reads the
      private sheet as its owner. Nothing here needs the sheet to be shared. */
+  /* Answers from the helper script. It always answers JSON; anything else came from
+     something in between: a network or security program that blocks Google's script
+     service (common on office laptops and VPNs), or a rare hiccup at Google itself. */
+  var BLOCKED_MSG = "Google's helper could not be reached from this device. Office laptops and VPNs often block it: try home Wi-Fi without the VPN, or use your phone.";
+  function readJson(res) {
+    return res.text().then(function (text) {
+      try { return JSON.parse(text); } catch (e) {
+        var err = new Error(BLOCKED_MSG);
+        err.blocked = true;
+        throw err;
+      }
+    });
+  }
+  // Reading is safe to try again; the first try after a quiet spell sometimes fails at Google.
+  function getJson(url, options, tries) {
+    tries = tries || 3;
+    return fetch(url, options).then(readJson).catch(function (err) {
+      if (tries <= 1) throw err;
+      return new Promise(function (done) { setTimeout(done, 900); }).then(function () { return getJson(url, options, tries - 1); });
+    });
+  }
+
   function fetchRecipes() {
     var helper = safeUrl(CONFIG.VOICE_UPLOAD_URL);
-    return fetch(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "recipes=1&t=" + Date.now(),
-                 { cache: "no-store", credentials: "omit" })
-      .then(function (res) { return res.json(); })
+    return getJson(helper + (helper.indexOf("?") >= 0 ? "&" : "?") + "recipes=1&t=" + Date.now(),
+                   { cache: "no-store", credentials: "omit" })
       .then(function (out) {
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not load the list.");
         var built = buildSections(out.dishes || "");
@@ -1822,7 +1869,7 @@ const CONFIG = {
         method: "POST",
         body: JSON.stringify({ key: key, dish: dish, mimeType: recording.blob.type, data: data })
       })
-        .then(function (res) { return res.json(); })
+        .then(readJson)
         .then(function (out) {
           if (keyRejected(out)) return;
           if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
@@ -1998,7 +2045,7 @@ const CONFIG = {
       method: "POST",
       body: JSON.stringify({ key: key, action: "plan", date: date, items: items, note: note })
     })
-      .then(function (res) { return res.json(); })
+      .then(readJson)
       .then(function (out) {
         if (keyRejected(out)) return;
         if (!out || !out.ok) throw new Error((out && out.error) || "Could not save.");
@@ -2142,7 +2189,7 @@ const CONFIG = {
         method: "POST",
         body: JSON.stringify({ key: deviceKey() || "", action: "reelPicture", link: video.url })
       })
-        .then(function (res) { return res.json(); })
+        .then(readJson)
         .then(function (out) {
           if (previewFor !== reelKey) return;
           if (!out || !out.ok || !out.data) throw new Error();
@@ -2239,7 +2286,7 @@ const CONFIG = {
         photo: picked ? { mimeType: picked.mimeType, data: picked.data } : null
       })
     })
-      .then(function (res) { return res.json(); })
+      .then(readJson)
       .then(function (out) {
         if (out && out.exists) {
           addReplace = true;
@@ -2286,6 +2333,123 @@ const CONFIG = {
       });
   }
 
+  /* ---------- add page: remove a dish (with Undo) ---------- */
+
+  var manage = { list: document.getElementById("manageList"), msg: document.getElementById("manageMsg") };
+
+  function manageMessage(text, kind, undo) {
+    manage.msg.textContent = text || "";
+    manage.msg.className = "rec-msg" + (kind ? " " + kind : "");
+    manage.msg.hidden = !text;
+    if (undo) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "m-undo";
+      b.textContent = "Undo";
+      b.addEventListener("click", undo);
+      manage.msg.appendChild(b);
+    }
+  }
+
+  function fillManage() {
+    manage.list.textContent = "";
+    dishSections.forEach(function (sec) {
+      if (!sec.dishes.length) return;
+      var head = document.createElement("h3");
+      head.className = "m-section";
+      head.textContent = sec.label;
+      var ul = document.createElement("ul");
+      ul.className = "m-list";
+      sec.dishes.forEach(function (dish) { ul.appendChild(manageRow(sec, dish)); });
+      manage.list.appendChild(head);
+      manage.list.appendChild(ul);
+    });
+  }
+
+  function manageRow(sec, dish) {
+    var li = document.createElement("li");
+    li.className = "m-row";
+    var img = document.createElement("img");
+    img.className = "m-thumb";
+    img.alt = "";
+    img.loading = "lazy";
+    if (dish.customImageId) privatePhoto(dish.customImageId).then(function (src) { img.src = src; }).catch(function () {});
+    else if (dish.customImage) img.src = dish.customImage;
+    else if (dish.videoId) img.src = "https://i.ytimg.com/vi/" + dish.videoId + "/mqdefault.jpg";
+    var name = document.createElement("span");
+    name.className = "m-name";
+    name.textContent = dish.name;
+    var del = document.createElement("button");
+    del.type = "button";
+    del.className = "m-del";
+    del.setAttribute("aria-label", "Remove " + dish.name);
+    del.innerHTML = iconSvg("trash", 22);
+    li.appendChild(img);
+    li.appendChild(name);
+    li.appendChild(del);
+
+    // First tap asks; the bin turns into Remove / Keep, right on that row.
+    del.addEventListener("click", function () {
+      li.classList.add("asking");
+      del.hidden = true;
+      var yes = document.createElement("button");
+      yes.type = "button";
+      yes.className = "m-yes";
+      yes.textContent = "Remove";
+      var no = document.createElement("button");
+      no.type = "button";
+      no.className = "m-no";
+      no.textContent = "Keep";
+      var ask = document.createElement("span");
+      ask.className = "m-ask";
+      ask.appendChild(yes);
+      ask.appendChild(no);
+      li.appendChild(ask);
+      yes.focus();
+      no.addEventListener("click", function () { fillManage(); });
+      yes.addEventListener("click", function () { removeDish(sec, dish, yes, no); });
+    });
+    return li;
+  }
+
+  function removeDish(sec, dish, yes, no) {
+    var key = deviceKey();
+    if (!key) { showView(); return; }
+    yes.disabled = no.disabled = true;
+    yes.textContent = "Removing...";
+    fetch(CONFIG.VOICE_UPLOAD_URL, { method: "POST", body: JSON.stringify({ key: key, action: "removeDish", section: sec.label, dish: dish.name }) })
+      .then(readJson)
+      .then(function (out) {
+        if (keyRejected(out)) return;
+        if (!out || !out.ok) throw new Error((out && out.error) || "Could not remove it.");
+        // Gone from the page straight away; the next load reads the sheet again.
+        sec.dishes = sec.dishes.filter(function (d) { return d !== dish; });
+        if (!sec.dishes.length) dishSections = dishSections.filter(function (s) { return s !== sec; });
+        render();
+        fillAddSections();
+        manageMessage("Removed " + dish.name + " from " + sec.label + ".", "ok", function () { restoreDish(out.rows, dish.name); });
+      })
+      .catch(function (err) {
+        fillManage();
+        var m = err && err.message && !/fetch|network|json|token/i.test(err.message)
+          ? err.message : "Could not reach Google. Check the internet connection and try again.";
+        manageMessage(m, "error");
+      });
+  }
+
+  function restoreDish(rows, name) {
+    manageMessage("Putting " + name + " back...");
+    fetch(CONFIG.VOICE_UPLOAD_URL, { method: "POST", body: JSON.stringify({ key: deviceKey(), action: "restoreDish", rows: rows }) })
+      .then(readJson)
+      .then(function (out) {
+        if (keyRejected(out)) return;
+        if (!out || !out.ok) throw new Error();
+        manageMessage(name + " is back.", "ok");
+        load();
+      })
+      .catch(function () { manageMessage("Could not put " + name + " back. Add it again above.", "error"); });
+  }
+
   function resetAddForm() {
     ad.link.value = "";
     ad.name.value = "";
@@ -2299,6 +2463,8 @@ const CONFIG = {
     ad.save.hidden = false;
     addReplace = false;
     ad.save.textContent = "Add dish";
+    manageMessage("");
+    fillManage();
   }
 
   ad.link.addEventListener("input", updatePreview);
