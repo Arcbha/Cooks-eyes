@@ -83,7 +83,11 @@ session.
 - Every page reads the helper's answers with `readJson`: anything that is not
   JSON (an office network or security program answering instead of Google, or a
   rare Google hiccup) becomes a plain explanation instead of a raw error, and
-  reads (`getJson`) are retried twice; changes are sent once.
+  reads (`getJson`) are retried twice; changes are sent once. A read whose
+  connection is stopped while online counts as blocked too. The message ends with
+  "Details:" (status, answering address, page title) so a photo shows the cause.
+  Work laptops can block Google's script service even on home Wi-Fi; a personal
+  browser profile, another browser, or a phone avoids it.
 - New to-dos send phone alerts as **Home Suite** itself (standard web push; no
   ntfy). Each phone turns them on from the "To-do alerts" card on Home (iPhone:
   add Home Suite to the home screen first). `manifest.webmanifest`, `sw.js` and

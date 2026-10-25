@@ -825,13 +825,21 @@ const CONFIG = {
   /* Answers from the helper script. It always answers JSON; anything else came from
      something in between: a network or security program that blocks Google's script
      service (common on office laptops and VPNs), or a rare hiccup at Google itself. */
-  var BLOCKED_MSG = "Google's helper could not be reached from this device. Office laptops and VPNs often block it: try home Wi-Fi without the VPN, or use your phone.";
+  var BLOCKED_MSG = "This browser could not reach Google's helper. Work laptops often block it, even on home Wi-Fi: " +
+                    "try a personal browser profile or another browser (such as Chrome), or use your phone.";
+  function blockedError(detail) {
+    var err = new Error(BLOCKED_MSG + (detail ? " (Details: " + detail + ")" : ""));
+    err.blocked = true;
+    return err;
+  }
   function readJson(res) {
     return res.text().then(function (text) {
       try { return JSON.parse(text); } catch (e) {
-        var err = new Error(BLOCKED_MSG);
-        err.blocked = true;
-        throw err;
+        // Say what answered instead, so a photo of the message shows the cause.
+        var title = ((text.match(/<title[^>]*>([^<]{0,60})/i) || [])[1] || "").trim();
+        var host = "";
+        try { host = new URL(res.url).hostname; } catch (e2) { /* no address */ }
+        throw blockedError([res.status, host, title].filter(Boolean).join(", "));
       }
     });
   }
@@ -839,7 +847,11 @@ const CONFIG = {
   function getJson(url, options, tries) {
     tries = tries || 3;
     return fetch(url, options).then(readJson).catch(function (err) {
-      if (tries <= 1) throw err;
+      if (tries <= 1) {
+        // Online, yet the connection itself was stopped: something on this computer refused it.
+        if (!err.blocked && navigator.onLine !== false) throw blockedError("connection stopped");
+        throw err;
+      }
       return new Promise(function (done) { setTimeout(done, 900); }).then(function () { return getJson(url, options, tries - 1); });
     });
   }
